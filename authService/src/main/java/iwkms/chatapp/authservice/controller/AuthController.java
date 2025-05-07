@@ -1,5 +1,8 @@
 package iwkms.chatapp.authservice.controller;
 
+import iwkms.chatapp.authservice.config.jwt.JwtUtil;
+import iwkms.chatapp.authservice.dto.AuthResponseDto;
+import iwkms.chatapp.authservice.dto.LoginRequestDto;
 import iwkms.chatapp.authservice.dto.RegistrationDto;
 import iwkms.chatapp.authservice.model.UserEntity;
 import iwkms.chatapp.authservice.service.UserService;
@@ -8,7 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,12 +21,15 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
+    private final JwtUtil jwtUtil;
 
     @Autowired
     public AuthController(UserService userService,
-                          AuthenticationManager authenticationManager) {
+                          AuthenticationManager authenticationManager,
+                          JwtUtil jwtUtil) {
         this.userService = userService;
         this.authenticationManager = authenticationManager;
+        this.jwtUtil = jwtUtil;
     }
 
     @PostMapping("/register")
@@ -31,26 +39,43 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestParam String username,
-                                        @RequestParam String password) {
-        UsernamePasswordAuthenticationToken authRequest =
-                new UsernamePasswordAuthenticationToken(username, password);
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDto loginRequest) {
+        Authentication authentication;
         try {
-            Authentication auth = authenticationManager.authenticate(authRequest);
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            return ResponseEntity.ok("Вы успешно вошли, " + username);
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
+            );
         } catch (BadCredentialsException e) {
-            return ResponseEntity.badRequest().body("Неверные учетные данные");
-        } catch (DisabledException | LockedException e) {
-            return ResponseEntity.badRequest().body("Вход невозможен: " + e.getMessage());
+            return ResponseEntity.status(401).body("Неверные учетные данные");
+        } catch (DisabledException e) {
+            return ResponseEntity.status(403).body("Учетная запись пользователя отключена: " + e.getMessage());
+        } catch (LockedException e) {
+            return ResponseEntity.status(403).body("Учетная запись пользователя заблокирована: " + e.getMessage());
+        } catch (AuthenticationException e) {
+            return ResponseEntity.status(401).body("Ошибка аутентификации: " + e.getMessage());
         }
+
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String jwt = jwtUtil.generateToken(authentication);
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+
+        return ResponseEntity.ok(new AuthResponseDto(jwt, userDetails.getUsername()));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<String> currentUserInfo(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Вы не авторизованы");
+    public ResponseEntity<?> currentUserInfo(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            return ResponseEntity.status(401).body("Вы не авторизованы или токен не предоставлен/недействителен");
         }
-        return ResponseEntity.ok("Текущий пользователь: " + authentication.getName());
+        Object principal = authentication.getPrincipal();
+        String username;
+        if (principal instanceof UserDetails) {
+            username = ((UserDetails) principal).getUsername();
+        } else {
+            username = principal.toString(); // Fallback
+        }
+
+        return ResponseEntity.ok("Текущий пользователь: " + username + ", Роли: " + authentication.getAuthorities());
     }
 }

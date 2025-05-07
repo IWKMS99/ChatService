@@ -28,6 +28,7 @@ public class UserEntity {
     @CollectionTable(name = "user_roles",
                      joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
+    @Builder.Default
     private Set<String> roles = new HashSet<>();
 
     private LocalDateTime createdAt;
