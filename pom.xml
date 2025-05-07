@@ -22,11 +22,12 @@
         <lombok.version>1.18.30</lombok.version>
         <postgresql.version>42.7.3</postgresql.version>
         <thymeleaf.version>3.1.2.RELEASE</thymeleaf.version>
+        <spring-security.version>6.2.4</spring-security.version>
     </properties>
 
     <modules>
         <module>chatService</module>
-
+        <module>authService</module>
     </modules>
 
     <dependencyManagement>
@@ -55,6 +56,18 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter-thymeleaf</artifactId>
                 <version>${spring-boot.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-websocket</artifactId>
+                <version>${spring-boot.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.security</groupId>
+                <artifactId>spring-security-bom</artifactId>
+                <version>${spring-security.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

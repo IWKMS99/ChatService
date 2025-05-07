@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>Chat Service</title>
     <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 </head>
 <body>
 <div class="container">
@@ -27,8 +29,8 @@
     <div th:if="${currentChatRoomId != null and currentChatRoomId != ''}">
         <h2 th:text="'Messages in Room: ' + ${currentChatRoomId}">Messages</h2>
 
-        <div class="messages-area">
-            <div th:if="${#lists.isEmpty(messages)}" class="no-messages">
+        <div class="messages-area" id="messagesArea">
+            <div th:if="${#lists.isEmpty(messages)}" class="no-messages" id="noMessagesPlaceholder">
                 No messages in this room yet.
             </div>
             <div th:each="msg : ${messages}" class="message">
@@ -42,27 +44,216 @@
 
         <div class="message-form">
             <h3>Send a new message</h3>
-            <form th:action="@{/chat/send}" method="post">
-                <input type="hidden" name="senderUsername" th:value="${currentUsername}" />
-                <input type="hidden" name="chatRoomId" th:value="${currentChatRoomId}" />
+            <form id="messageForm" th:object="${messageDto}">
+                <input type="hidden" id="formSenderUsername" th:field="*{senderUsername}" />
+                <input type="hidden" id="formChatRoomId" th:field="*{chatRoomId}" />
+
                 <div>
                     <label for="content">Message:</label>
-                    <textarea id="content" name="content" rows="3" required></textarea>
+                    <textarea id="content" th:field="*{content}" rows="3" required disabled></textarea>
+                    <div th:if="${#fields.hasErrors('content')}" class="error" id="contentError">
+                        <p th:each="err : ${#fields.errors('content')}" th:text="${err}">Content error</p>
+                    </div>
+                    <!-- Место для отображения ошибок WebSocket -->
+                    <div id="websocketError" class="error" style="display: none;"></div>
                 </div>
-                <button type="submit">Send</button>
+                <button type="submit" id="sendButton" disabled>Send</button>
+                <div id="connectionStatus" style="font-size: 0.9em; margin-top: 5px;">Connecting...</div>
             </form>
-            <div th:if="${errorMessage}" class="error" th:text="${errorMessage}"></div>
-            <div th:if="${#fields.hasErrors('messageDto.*')}" class="error">
-                <ul>
-                    <li th:each="err : ${#fields.errors('messageDto.*')}" th:text="${err}" />
-                </ul>
-            </div>
         </div>
     </div>
-    <div th:unless="${currentChatRoomId != null and currentChatRoomId != ''}" style="text-align: center; margin-top: 20px;">
-        <p>Please enter your username and a chat room ID to start.</p>
-    </div>
-
 </div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const currentUsername = /*[[${currentUsername}]]*/ null;
+    const currentChatRoomId = /*[[${currentChatRoomId}]]*/ null;
+    let stompClient = null;
+
+    const messageContentInput = document.getElementById('content');
+    const sendButton = document.getElementById('sendButton');
+    const connectionStatusDiv = document.getElementById('connectionStatus');
+    const contentErrorDiv = document.getElementById('contentError'); // Уже было, может пригодиться
+    const websocketErrorDiv = document.getElementById('websocketError'); // Новый div для ошибок WebSocket
+
+    function updateChatControlsState(enableControls, statusMessage, isError = false, hideStatusAfterDelay = false) {
+        if (messageContentInput) {
+            messageContentInput.disabled = !enableControls;
+        }
+        if (sendButton) {
+            sendButton.disabled = !enableControls;
+        }
+
+        if (connectionStatusDiv) {
+            connectionStatusDiv.textContent = statusMessage;
+            connectionStatusDiv.style.display = statusMessage ? 'block' : 'none';
+            connectionStatusDiv.style.color = isError ? 'red' : '';
+
+            if (hideStatusAfterDelay && statusMessage && !isError) {
+                setTimeout(() => {
+                    if (connectionStatusDiv) {
+                        connectionStatusDiv.style.display = 'none';
+                    }
+                }, 3000);
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (currentChatRoomId && currentUsername) {
+            updateChatControlsState(false, 'Connecting to chat...');
+            connectToChat();
+        } else {
+            updateChatControlsState(false, 'Please select a user and room.');
+        }
+
+        const messageForm = document.getElementById('messageForm');
+        if (messageForm) {
+            messageForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                sendMessage();
+            });
+        }
+    });
+
+    function connectToChat() {
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+            console.log('Connected: ' + frame);
+            updateChatControlsState(true, 'Connected!', false, true);
+
+            // Подписка на сообщения комнаты
+            stompClient.subscribe('/topic/messages/' + currentChatRoomId, function (messageOutput) {
+                showMessage(JSON.parse(messageOutput.body));
+            });
+
+            // Подписка на личную очередь ошибок
+            stompClient.subscribe('/user/queue/errors', function (errorOutput) {
+                displayWebSocketError(JSON.parse(errorOutput.body));
+            });
+
+        }, function(error) {
+            console.error('STOMP connection error: ' + error);
+            updateChatControlsState(false, 'Connection failed. Please refresh. Error: ' + error, true);
+        });
+    }
+
+    function sendMessage() {
+        // Сначала очистим предыдущие ошибки
+        if (contentErrorDiv) contentErrorDiv.innerHTML = '';
+        if (websocketErrorDiv) {
+            websocketErrorDiv.innerHTML = '';
+            websocketErrorDiv.style.display = 'none';
+        }
+
+        const messageText = messageContentInput ? messageContentInput.value.trim() : "";
+
+        if (!messageText) {
+            if (contentErrorDiv) {
+                contentErrorDiv.innerHTML = '<p>Content cannot be blank (client-side check)</p>';
+                contentErrorDiv.style.display = 'block';
+            }
+            else console.warn("contentErrorDiv not found");
+            return;
+        }
+
+        if (stompClient && stompClient.connected) {
+            const chatMessage = {
+                senderUsername: document.getElementById('formSenderUsername').value,
+                chatRoomId: document.getElementById('formChatRoomId').value,
+                content: messageText
+            };
+            stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+            if (messageContentInput) {
+                messageContentInput.value = '';
+                messageContentInput.focus();
+            }
+        } else {
+            console.error('Cannot send message, STOMP client not connected.');
+            updateChatControlsState(false, 'Error: Not connected. Please refresh.', true);
+            if (websocketErrorDiv) { // Показываем ошибку и здесь
+                websocketErrorDiv.textContent = 'Error: Not connected. Please refresh.';
+                websocketErrorDiv.style.display = 'block';
+            }
+        }
+    }
+
+    function showMessage(message) {
+        const messagesArea = document.getElementById('messagesArea');
+        const noMessagesPlaceholder = document.getElementById('noMessagesPlaceholder');
+
+        if (!messagesArea) return;
+
+        if (noMessagesPlaceholder && noMessagesPlaceholder.style.display !== 'none') {
+            noMessagesPlaceholder.style.display = 'none';
+        }
+
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message');
+
+        if (message.senderUsername === currentUsername) {
+            messageElement.classList.add('my-message');
+        } else {
+            messageElement.classList.add('other-message');
+        }
+
+        const senderSpan = document.createElement('span');
+        senderSpan.classList.add('sender');
+        senderSpan.textContent = message.senderUsername;
+
+        const contentSpan = document.createElement('span');
+        contentSpan.classList.add('content');
+        contentSpan.textContent = message.content;
+
+        const timestampSpan = document.createElement('span');
+        timestampSpan.classList.add('timestamp');
+        const date = new Date(message.timestamp);
+        timestampSpan.textContent = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()} ${('0' + date.getHours()).slice(-2)}:${('0' + date.getMinutes()).slice(-2)}:${('0' + date.getSeconds()).slice(-2)}`;
+
+        const messageLineDiv = document.createElement('div');
+        messageLineDiv.appendChild(senderSpan);
+        messageLineDiv.appendChild(document.createTextNode(': '));
+        messageLineDiv.appendChild(contentSpan);
+        messageLineDiv.appendChild(timestampSpan);
+
+        messageElement.appendChild(messageLineDiv);
+
+        messagesArea.appendChild(messageElement);
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+    }
+
+    // Новая функция для отображения ошибок WebSocket
+    function displayWebSocketError(errorPayload) {
+        console.error("WebSocket Error Received:", errorPayload);
+        if (websocketErrorDiv) {
+            let errorMessageHtml = `<strong>${errorPayload.errorType || 'Error'}:</strong><ul>`;
+            if (errorPayload.messages && errorPayload.messages.length > 0) {
+                errorPayload.messages.forEach(msg => {
+                    errorMessageHtml += `<li>${msg}</li>`;
+                });
+            } else {
+                errorMessageHtml += `<li>An unspecified error occurred.</li>`;
+            }
+            errorMessageHtml += `</ul>`;
+            if (errorPayload.originalDestination) {
+                errorMessageHtml += `<small>Original destination: ${errorPayload.originalDestination}</small>`;
+            }
+            websocketErrorDiv.innerHTML = errorMessageHtml;
+            websocketErrorDiv.style.display = 'block';
+        }
+    }
+
+    window.addEventListener('beforeunload', function() {
+        if (stompClient && stompClient.connected) {
+            stompClient.disconnect(function() {
+                console.log('Disconnected STOMP client');
+            });
+        }
+    });
+
+    /*]]>*/
+</script>
 </body>
 </html>

@@ -32,9 +32,19 @@ public class ChatWebController {
                            @RequestParam(name = "chatRoomId", required = false) String chatRoomId,
                            Model model) {
 
+        if (!model.containsAttribute("messageDto")) {
+            ChatMessageDto newMessageDto = new ChatMessageDto();
+            if (username != null) {
+                newMessageDto.setSenderUsername(username);
+            }
+            if (chatRoomId != null) {
+                newMessageDto.setChatRoomId(chatRoomId);
+            }
+            model.addAttribute("messageDto", newMessageDto);
+        }
+
         model.addAttribute("currentUsername", username);
         model.addAttribute("currentChatRoomId", chatRoomId);
-        model.addAttribute("messageDto", new ChatMessageDto());
 
         if (chatRoomId != null && !chatRoomId.isEmpty()) {
             List<ChatMessage> messages = chatService.getMessagesByChatRoom(chatRoomId);
@@ -43,27 +53,22 @@ public class ChatWebController {
             model.addAttribute("messages", Collections.emptyList());
         }
 
-        return "chat"; // Имя HTML-файла (chat.html)
+        return "chat";
     }
 
     @PostMapping("/chat/send")
     public String sendMessage(@Valid @ModelAttribute("messageDto") ChatMessageDto messageDto,
                               BindingResult bindingResult,
                               RedirectAttributes redirectAttributes) {
+
         if (bindingResult.hasErrors()) {
+
             redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.messageDto", bindingResult);
             redirectAttributes.addFlashAttribute("messageDto", messageDto);
-            redirectAttributes.addAttribute("username", messageDto.getSenderUsername());
-            redirectAttributes.addAttribute("chatRoomId", messageDto.getChatRoomId());
-            redirectAttributes.addFlashAttribute("errorMessage", "Message could not be sent. Please check the fields.");
-            return "redirect:/chat";
-        }
 
-        if (messageDto.getSenderUsername() == null || messageDto.getSenderUsername().isBlank() ||
-                messageDto.getChatRoomId() == null || messageDto.getChatRoomId().isBlank()) {
             redirectAttributes.addAttribute("username", messageDto.getSenderUsername());
             redirectAttributes.addAttribute("chatRoomId", messageDto.getChatRoomId());
-            redirectAttributes.addFlashAttribute("errorMessage", "Username and Chat Room ID are required to send a message.");
+
             return "redirect:/chat";
         }
 
