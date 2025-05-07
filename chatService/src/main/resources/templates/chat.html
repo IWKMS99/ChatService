@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Service</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}"/>
+</head>
+<body>
+<div class="container">
+    <h1>Chat Service</h1>
+
+    <div class="chat-room-selection">
+        <h2>Select Chat Room and User</h2>
+        <form th:action="@{/chat}" method="get">
+            <div>
+                <label for="username">Your Username:</label>
+                <input type="text" id="username" name="username" th:value="${currentUsername}" required/>
+            </div>
+            <div>
+                <label for="roomId">Chat Room ID:</label>
+                <input type="text" id="roomId" name="chatRoomId" th:value="${currentChatRoomId}" required/>
+            </div>
+            <button type="submit">Enter Chat Room</button>
+        </form>
+    </div>
+
+    <div th:if="${currentChatRoomId != null and currentChatRoomId != ''}">
+        <h2 th:text="'Messages in Room: ' + ${currentChatRoomId}">Messages</h2>
+
+        <div class="messages-area">
+            <div th:if="${#lists.isEmpty(messages)}" class="no-messages">
+                No messages in this room yet.
+            </div>
+            <div th:each="msg : ${messages}" class="message">
+                <div>
+                    <span class="sender" th:text="${msg.senderUsername}">Sender</span>:
+                    <span class="content" th:text="${msg.content}">Message content</span>
+                    <span class="timestamp" th:text="${#temporals.format(msg.timestamp, 'dd-MM-yyyy HH:mm:ss')}">Timestamp</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="message-form">
+            <h3>Send a new message</h3>
+            <form th:action="@{/chat/send}" method="post">
+                <input type="hidden" name="senderUsername" th:value="${currentUsername}" />
+                <input type="hidden" name="chatRoomId" th:value="${currentChatRoomId}" />
+                <div>
+                    <label for="content">Message:</label>
+                    <textarea id="content" name="content" rows="3" required></textarea>
+                </div>
+                <button type="submit">Send</button>
+            </form>
+            <div th:if="${errorMessage}" class="error" th:text="${errorMessage}"></div>
+            <div th:if="${#fields.hasErrors('messageDto.*')}" class="error">
+                <ul>
+                    <li th:each="err : ${#fields.errors('messageDto.*')}" th:text="${err}" />
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div th:unless="${currentChatRoomId != null and currentChatRoomId != ''}" style="text-align: center; margin-top: 20px;">
+        <p>Please enter your username and a chat room ID to start.</p>
+    </div>
+
+</div>
+</body>
+</html>
