@@ -42,7 +42,10 @@ public class JwtUtil {
     public String extractTokenFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader(jwtHeader);
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(jwtPrefix)) {
-            return bearerToken.substring(jwtPrefix.length());
+            String token = bearerToken.substring(jwtPrefix.length());
+            if (StringUtils.hasText(token)) {
+                return token;
+            }
         }
         return null;
     }
