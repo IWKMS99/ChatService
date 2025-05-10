@@ -17,7 +17,7 @@ A microservice-based chat application built with Spring Boot, featuring JWT auth
 7. [API Endpoints](#api-endpoints)
 
    * [AuthService (Port 8082)](#authservice-port-8082)
-   * [ChatService (Port 8081)](#chatservice-port-8081)
+   * [ChatService (Port 8080)](#chatservice-port-8080)
 8. [WebSocket Usage](#websocket-usage)
 9. [Project Structure](#project-structure)
 10. [Future Enhancements](#future-enhancements)
@@ -26,36 +26,47 @@ A microservice-based chat application built with Spring Boot, featuring JWT auth
 
 ## Overview
 
-ChatApp consists of two Spring Boot microservices:
+ChatApp consists of two Spring Boot microservices with a common security module:
 
 * **AuthService**: Handles user registration and authentication, issues JWT tokens.
 * **ChatService**: Secured by JWT, provides REST and WebSocket endpoints for messaging.
+* **common-security**: Shared JWT security components used by both services.
 
 **Client** applications (web browsers, Postman, etc.) interact with these services over HTTP (REST) and WebSocket (STOMP over SockJS).
 
 ## Architecture
 
 ```text
-+------------+   JWT    +-------------+
-|            | <------> |             |
-| AuthService|          | ChatService |
-| (Register, |          | (Messaging) |
-|  Login)    |          |             |
-+-----+------+          +------+------+
-      |                        ^
-      | REST API / WebSocket   |
-      v                        |
-+-----+------+                 |
-|            |                 |
-|   Client   | ---------------+
-| (Browser,  |
-|  Postman)  |
-+------------+
+                           +-------------------+
+                           |                   |
+                           | common-security   |
+                           | (JWT Components)  |
+                           |                   |
+                           +---^-------^-------+
+                                |       |
+                 depends on     |       |     depends on
+                                |       |
+           +-------------------+         +-------------------+
+           |                   |  JWT    |                   |
+           |   AuthService     | <-----> |   ChatService     |
+           |   (Register,      |         |   (Messaging)     |
+           |    Login)         |         |                   |
+           +--------+----------+         +--------+----------+
+                    |                             ^
+                    | REST API / WebSocket        |
+                    v                             |
+           +--------+----------+                  |
+           |                   |                  |
+           |      Client       | -----------------+
+           |   (Browser,       |
+           |    Postman)       |
+           +-------------------+
 ```
 
 ## Features
 
 * **Microservice Architecture**
+* **Shared Security Module** to eliminate code duplication
 * **JWT Authentication** (Bearer tokens)
 * **REST API** for user management and message history
 * **WebSocket (STOMP over SockJS)** for real-time messaging
@@ -103,7 +114,7 @@ Ensure a PostgreSQL user has privileges for both databases.
 
 Update `src/main/resources/application.properties` (or `application.yml`) in each service:
 
-**AuthService (`auth-service`)**
+**AuthService (`authService`)**
 
 ```properties
 server.port=8082
@@ -121,10 +132,10 @@ jwt.secret=<YOUR_SECRET_KEY>
 jwt.expiration.ms=3600000
 ```
 
-**ChatService (`chat-service`)**
+**ChatService (`chatService`)**
 
 ```properties
-server.port=8081
+server.port=8080
 
 spring.datasource.url=jdbc:postgresql://localhost:5432/chat_db
 spring.datasource.username=<DB_USER>
@@ -141,18 +152,32 @@ jwt.expiration.ms=3600000
 
 ### Building and Running
 
-Build and run each service separately:
+Build and run the modules in the following order:
 
 ```bash
-# AuthService
-cd auth-service
-mvn clean package
-java -jar target/auth-service-0.0.1-SNAPSHOT.jar
+# First build the common security module
+mvn clean install -pl common-security
 
-# ChatService
-cd chat-service
+# Build and run AuthService
+cd authService
 mvn clean package
-java -jar target/chat-service-0.0.1-SNAPSHOT.jar
+java -jar target/authService-0.0.1-SNAPSHOT.jar
+
+# Build and run ChatService
+cd chatService
+mvn clean package
+java -jar target/chatService-0.0.1-SNAPSHOT.jar
+```
+
+Alternatively, build all modules at once:
+
+```bash
+# Build all modules
+mvn clean package
+
+# Run each service
+java -jar authService/target/authService-0.0.1-SNAPSHOT.jar
+java -jar chatService/target/chatService-0.0.1-SNAPSHOT.jar
 ```
 
 ## API Endpoints
@@ -200,7 +225,7 @@ java -jar target/chat-service-0.0.1-SNAPSHOT.jar
   Authorization: Bearer <token>
   ```
 
-### ChatService (Port 8081)
+### ChatService (Port 8080)
 
 All endpoints require `Authorization: Bearer <token>`.
 
@@ -226,7 +251,7 @@ All endpoints require `Authorization: Bearer <token>`.
 
 ## WebSocket Usage
 
-* **Connect**: `ws://localhost:8081/ws` (SockJS fallback)
+* **Connect**: `ws://localhost:8080/ws` (SockJS fallback)
 * **STOMP Headers**: `Authorization: Bearer <token>`
 * **Send**: Destination `/app/chat.sendMessage`
 
@@ -242,33 +267,38 @@ All endpoints require `Authorization: Bearer <token>`.
 ## Project Structure
 
 ```text
-auth-service/
-├── src/main/java/com/example/auth
-│   ├── config
-│   ├── controller
-│   ├── dto
-│   ├── exception
-│   ├── model
-│   ├── repository
-│   ├── service
-│   └── AuthServiceApplication.java
-└── src/main/resources/application.properties
-
-chat-service/
-├── src/main/java/com/example/chat
-│   ├── config
-│   ├── controller
-│   ├── dto
-│   ├── exception
-│   ├── model
-│   ├── repository
-│   ├── service
-│   └── ChatServiceApplication.java
-├── src/main/resources/static
-├── src/main/resources/templates
-└── src/main/resources/application.properties
-
-pom.xml
+ChatService/
+├── authService/
+│   ├── src/main/java/iwkms/chatapp/authservice
+│   │   ├── config
+│   │   ├── controller
+│   │   ├── dto
+│   │   ├── exception
+│   │   ├── model
+│   │   ├── repository
+│   │   ├── service
+│   │   └── AuthServiceApplication.java
+│   └── src/main/resources/application.properties
+├── chatService/
+│   ├── src/main/java/iwkms/chatapp/chatservice
+│   │   ├── config
+│   │   ├── controller
+│   │   ├── dto
+│   │   ├── exception
+│   │   ├── model
+│   │   ├── repository
+│   │   ├── service
+│   │   └── ChatServiceApplication.java
+│   ├── src/main/resources/static
+│   ├── src/main/resources/templates
+│   └── src/main/resources/application.properties
+├── common-security/
+│   └── src/main/java/iwkms/chatapp/common/security
+│       ├── config
+│       ├── jwt
+│       └── websocket
+├── pom.xml
+└── README.md
 ```
 
 ## Future Enhancements

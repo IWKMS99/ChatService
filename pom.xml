@@ -29,6 +29,7 @@
     <modules>
         <module>chatService</module>
         <module>authService</module>
+        <module>common-security</module>
     </modules>
 
     <dependencyManagement>

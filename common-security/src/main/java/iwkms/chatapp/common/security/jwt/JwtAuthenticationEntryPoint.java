@@ -1,4 +1,4 @@
-package iwkms.chatapp.authservice.config.jwt;
+package iwkms.chatapp.common.security.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
@@ -9,17 +9,23 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-@Component
+/**
+ * Обработчик ошибок аутентификации JWT.
+ * Возвращает HTTP 401 с сообщением об ошибке в виде JSON.
+ */
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationEntryPoint.class);
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
+
+    public JwtAuthenticationEntryPoint(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
@@ -38,4 +44,4 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
         objectMapper.writeValue(response.getOutputStream(), body);
     }
-}
+} 

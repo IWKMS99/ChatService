@@ -1,13 +1,13 @@
 package iwkms.chatapp.authservice.controller;
 
-import iwkms.chatapp.authservice.config.jwt.JwtUtil;
-import iwkms.chatapp.authservice.dto.AuthResponseDto;
-import iwkms.chatapp.authservice.dto.LoginRequestDto;
-import iwkms.chatapp.authservice.dto.RegistrationDto;
+import iwkms.chatapp.authservice.dto.*;
 import iwkms.chatapp.authservice.model.UserEntity;
 import iwkms.chatapp.authservice.service.UserService;
+import iwkms.chatapp.common.security.jwt.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
@@ -33,28 +33,32 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@Valid @RequestBody RegistrationDto registrationDto) {
-        UserEntity savedUser = userService.registerUser(registrationDto);
-        return ResponseEntity.ok("Пользователь " + savedUser.getUsername() + " успешно зарегистрирован");
+    public ResponseEntity<GenericResponseDto> register(@Valid @RequestBody RegistrationDto registrationDto) {
+        UserEntity savedUser = userService.registerUser(registrationDto); // Can throw UserAlreadyExistsException
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new GenericResponseDto("Пользователь " + savedUser.getUsername() + " успешно зарегистрирован"));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDto loginRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDto loginRequest, HttpServletRequest request) {
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
             );
         } catch (BadCredentialsException e) {
-            return ResponseEntity.status(401).body("Неверные учетные данные");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponseDto(HttpStatus.UNAUTHORIZED.value(), "Unauthorized", "Неверные учетные данные", request.getRequestURI()));
         } catch (DisabledException e) {
-            return ResponseEntity.status(403).body("Учетная запись пользователя отключена: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponseDto(HttpStatus.FORBIDDEN.value(), "Forbidden", "Учетная запись пользователя отключена: " + e.getMessage(), request.getRequestURI()));
         } catch (LockedException e) {
-            return ResponseEntity.status(403).body("Учетная запись пользователя заблокирована: " + e.getMessage());
-        } catch (AuthenticationException e) {
-            return ResponseEntity.status(401).body("Ошибка аутентификации: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponseDto(HttpStatus.FORBIDDEN.value(), "Forbidden", "Учетная запись пользователя заблокирована: " + e.getMessage(), request.getRequestURI()));
+        } catch (AuthenticationException e) { // Catchall for other auth issues
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponseDto(HttpStatus.UNAUTHORIZED.value(), "Unauthorized", "Ошибка аутентификации: " + e.getMessage(), request.getRequestURI()));
         }
-
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtil.generateToken(authentication);
@@ -64,18 +68,19 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> currentUserInfo(Authentication authentication) {
+    public ResponseEntity<?> currentUserInfo(Authentication authentication, HttpServletRequest request) {
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            return ResponseEntity.status(401).body("Вы не авторизованы или токен не предоставлен/недействителен");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponseDto(HttpStatus.UNAUTHORIZED.value(), "Unauthorized", "Вы не авторизованы или токен не предоставлен/недействителен", request.getRequestURI()));
         }
         Object principal = authentication.getPrincipal();
         String username;
-        if (principal instanceof UserDetails) {
-            username = ((UserDetails) principal).getUsername();
+        if (principal instanceof UserDetails userDetails) {
+            username = userDetails.getUsername();
         } else {
             username = principal.toString(); // Fallback
         }
 
-        return ResponseEntity.ok("Текущий пользователь: " + username + ", Роли: " + authentication.getAuthorities());
+        return ResponseEntity.ok(new UserInfoResponseDto(username, authentication.getAuthorities()));
     }
 }

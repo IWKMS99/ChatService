@@ -26,6 +26,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         return new org.springframework.security.core.userdetails.User(
                 userEntity.getUsername(),
                 userEntity.getPassword(),
+                userEntity.isEnabled(),
+                true, // accountNonExpired - assuming true for now, can be added to UserEntity
+                true, // credentialsNonExpired - assuming true for now, can be added to UserEntity
+                userEntity.isAccountNonLocked(),
                 userEntity.getRoles().stream()
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList())

@@ -6,62 +6,226 @@
     <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <!-- Добавляем Bootstrap для улучшения дизайна -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-<div class="container">
-    <h1>Chat Service</h1>
+<div class="container mt-4">
+    <h1 class="mb-4">Chat Service</h1>
 
-    <div class="chat-room-selection">
-        <h2>Select Chat Room and User</h2>
-        <form th:action="@{/chat}" method="get">
-            <div>
-                <label for="username">Your Username:</label>
-                <input type="text" id="username" name="username" th:value="${currentUsername}" required/>
-            </div>
-            <div>
-                <label for="roomId">Chat Room ID:</label>
-                <input type="text" id="roomId" name="chatRoomId" th:value="${currentChatRoomId}" required/>
-            </div>
-            <button type="submit">Enter Chat Room</button>
-        </form>
+    <!-- Уведомление об ошибке -->
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}">
+        Error message
     </div>
 
-    <div th:if="${currentChatRoomId != null and currentChatRoomId != ''}">
-        <h2 th:text="'Messages in Room: ' + ${currentChatRoomId}">Messages</h2>
+    <!-- Блок для неаутентифицированных пользователей -->
+    <div th:if="${!isAuthenticated}" class="auth-warning">
+        <div class="alert alert-warning" role="alert">
+            <p><strong>Внимание!</strong> Вы не авторизованы. Для полноценного использования чата, пожалуйста, авторизуйтесь.</p>
+            <a href="/api/v1/auth/login" class="btn btn-primary">Войти</a>
+            <a href="/api/v1/auth/register" class="btn btn-secondary">Зарегистрироваться</a>
+        </div>
+    </div>
 
-        <div class="messages-area" id="messagesArea">
-            <div th:if="${#lists.isEmpty(messages)}" class="no-messages" id="noMessagesPlaceholder">
-                No messages in this room yet.
-            </div>
-            <div th:each="msg : ${messages}" class="message">
-                <div>
-                    <span class="sender" th:text="${msg.senderUsername}">Sender</span>:
-                    <span class="content" th:text="${msg.content}">Message content</span>
-                    <span class="timestamp" th:text="${#temporals.format(msg.timestamp, 'dd-MM-yyyy HH:mm:ss')}">Timestamp</span>
+    <!-- Основной блок чата для авторизованных пользователей -->
+    <div th:if="${isAuthenticated}" class="row">
+        <!-- Левая колонка - список комнат -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Чат-комнаты</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Форма создания новой комнаты -->
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRoomModal">
+                            Создать комнату
+                        </button>
+                    </div>
+
+                    <!-- Секция публичных комнат -->
+                    <h6>Публичные комнаты</h6>
+                    <div class="list-group mb-3">
+                        <div th:if="${#lists.isEmpty(publicRooms)}" class="text-muted small">
+                            Публичных комнат пока нет
+                        </div>
+                        <a th:each="room : ${publicRooms}" 
+                           th:href="@{/chat(chatRoomId=${room.roomId})}"
+                           th:class="'list-group-item list-group-item-action ' + (${room.roomId == currentChatRoomId} ? 'active' : '')">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1" th:text="${room.name}">Room name</h6>
+                                <small th:if="${room.isOwner(currentUsername)}" class="badge bg-primary">Владелец</small>
+                            </div>
+                            <small class="text-muted" th:text="${room.description}">Room description</small>
+                        </a>
+                    </div>
+
+                    <!-- Секция приватных комнат -->
+                    <h6>Мои комнаты</h6>
+                    <div class="list-group">
+                        <div th:if="${#lists.isEmpty(userRooms)}" class="text-muted small">
+                            У вас пока нет приватных комнат
+                        </div>
+                        <a th:each="room : ${userRooms}" 
+                           th:href="@{/chat(chatRoomId=${room.roomId})}"
+                           th:class="'list-group-item list-group-item-action ' + (${room.roomId == currentChatRoomId} ? 'active' : '')">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1" th:text="${room.name}">Room name</h6>
+                                <div>
+                                    <small th:if="${room.isPrivate}" class="badge bg-secondary">Приватная</small>
+                                    <small th:if="${room.isOwner(currentUsername)}" class="badge bg-primary">Владелец</small>
+                                </div>
+                            </div>
+                            <small class="text-muted" th:text="${room.description}">Room description</small>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="message-form">
-            <h3>Send a new message</h3>
-            <form id="messageForm" th:object="${messageDto}">
-                <input type="hidden" id="formSenderUsername" th:field="*{senderUsername}" />
-                <input type="hidden" id="formChatRoomId" th:field="*{chatRoomId}" />
-
-                <div>
-                    <label for="content">Message:</label>
-                    <textarea id="content" th:field="*{content}" rows="3" required disabled></textarea>
-                    <div th:if="${#fields.hasErrors('content')}" class="error" id="contentError">
-                        <p th:each="err : ${#fields.errors('content')}" th:text="${err}">Content error</p>
+        <!-- Правая колонка - чат и управление участниками -->
+        <div class="col-md-8">
+            <!-- Блок с сообщениями и формой отправки -->
+            <div th:if="${currentChatRoomId != null and currentChatRoomId != ''}" class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 th:text="${chatRoom != null ? chatRoom.name : 'Чат'}" class="mb-0">Чат</h5>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#membersModal">
+                            Участники
+                        </button>
+                        <button th:if="${chatRoom != null && !chatRoom.isOwner(currentUsername)}" type="button" class="btn btn-sm btn-outline-danger leave-room-btn"
+                                th:data-room-id="${currentChatRoomId}">
+                            Покинуть
+                        </button>
                     </div>
-                    <div id="websocketError" class="error" style="display: none;"></div>
                 </div>
-                <button type="submit" id="sendButton" disabled>Send</button>
-                <div id="connectionStatus" style="font-size: 0.9em; margin-top: 5px;">Connecting...</div>
-            </form>
+                <div class="card-body">
+                    <div class="messages-area" id="messagesArea">
+                        <div th:if="${#lists.isEmpty(messages)}" class="no-messages" id="noMessagesPlaceholder">
+                            Сообщений в этой комнате пока нет.
+                        </div>
+                        <div th:each="msg : ${messages}" th:class="'message ' + (${msg.senderUsername == currentUsername} ? 'my-message' : 'other-message')">
+                            <div>
+                                <span class="sender" th:text="${msg.senderUsername}">Sender</span>:
+                                <span class="content" th:text="${msg.content}">Message content</span>
+                                <span class="timestamp" th:text="${#temporals.format(msg.timestamp, 'dd-MM-yyyy HH:mm:ss')}">Timestamp</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <form id="messageForm" th:object="${messageDto}">
+                        <input type="hidden" id="formSenderUsername" th:field="*{senderUsername}" />
+                        <input type="hidden" id="formChatRoomId" th:field="*{chatRoomId}" />
+                        <div class="mb-3">
+                            <textarea id="content" th:field="*{content}" class="form-control" rows="3" placeholder="Введите сообщение..." required disabled></textarea>
+                            <div th:if="${#fields.hasErrors('content')}" class="error" id="contentError">
+                                <p th:each="err : ${#fields.errors('content')}" th:text="${err}">Content error</p>
+                            </div>
+                            <div id="websocketError" class="error" style="display: none;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button type="submit" id="sendButton" class="btn btn-primary" disabled>Отправить</button>
+                            <div id="connectionStatus" class="text-muted small">Connecting...</div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Сообщение, если комната не выбрана -->
+            <div th:if="${currentChatRoomId == null or currentChatRoomId == ''}" class="text-center my-5">
+                <p class="lead">Выберите чат-комнату из списка слева или создайте новую.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для создания комнаты -->
+    <div class="modal fade" id="createRoomModal" tabindex="-1" aria-labelledby="createRoomModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createRoomModalLabel">Создать новую комнату</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="createRoomForm" th:action="@{/api/v1/rooms}" method="post">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="roomId" class="form-label">ID комнаты</label>
+                            <input type="text" class="form-control" id="roomId" name="roomId" 
+                                   pattern="^[a-zA-Z0-9-_]+$" 
+                                   minlength="3" maxlength="50" required>
+                            <div class="form-text">От 3 до 50 символов: буквы, цифры, дефисы и подчеркивания</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Название комнаты</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   minlength="3" maxlength="100" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Описание</label>
+                            <textarea class="form-control" id="description" name="description" 
+                                      maxlength="255" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="isPrivate" name="isPrivate">
+                            <label class="form-check-label" for="isPrivate">Приватная комната</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Создать</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для управления участниками -->
+    <div class="modal fade" id="membersModal" tabindex="-1" aria-labelledby="membersModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="membersModalLabel">Участники комнаты</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Форма добавления участника -->
+                    <div th:if="${chatRoom != null && chatRoom.hasMember(currentUsername)}" class="mb-4">
+                        <h6>Добавить участника</h6>
+                        <form id="addMemberForm" class="d-flex">
+                            <input type="text" class="form-control me-2" id="newMemberUsername" placeholder="Имя пользователя">
+                            <button type="submit" class="btn btn-primary">Добавить</button>
+                        </form>
+                    </div>
+                    
+                    <!-- Список участников -->
+                    <h6>Текущие участники</h6>
+                    <ul class="list-group" id="membersList">
+                        <li th:if="${chatRoom != null}" th:each="member : ${chatRoom.members}" 
+                            class="list-group-item d-flex justify-content-between align-items-center">
+                            <span th:text="${member}">Username</span>
+                            <div>
+                                <span th:if="${chatRoom != null && chatRoom.isOwner(member)}" class="badge bg-primary">Владелец</span>
+                                <button th:if="${chatRoom != null && chatRoom.isOwner(currentUsername) && !chatRoom.isOwner(member)}" 
+                                        class="btn btn-sm btn-danger remove-member-btn"
+                                        th:data-username="${member}">
+                                    Удалить
+                                </button>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Bootstrap и дополнительные скрипты -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script th:inline="javascript">
     /*<![CDATA[*/
@@ -100,10 +264,10 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         if (currentChatRoomId && currentUsername) {
-            updateChatControlsState(false, 'Connecting to chat...');
+            updateChatControlsState(false, 'Подключение к чату...');
             connectToChat();
         } else {
-            updateChatControlsState(false, 'Please select a user and room.');
+            updateChatControlsState(false, 'Выберите комнату для начала общения.');
         }
 
         const messageForm = document.getElementById('messageForm');
@@ -113,15 +277,45 @@
                 sendMessage();
             });
         }
+
+        // Обработчик для формы добавления участника
+        const addMemberForm = document.getElementById('addMemberForm');
+        if (addMemberForm) {
+            addMemberForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                addMember();
+            });
+        }
+
+        // Обработчики для кнопок удаления участников
+        document.querySelectorAll('.remove-member-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                removeMember(this.getAttribute('data-username'));
+            });
+        });
+
+        // Обработчик для кнопки "Покинуть комнату"
+        document.querySelectorAll('.leave-room-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                leaveRoom(this.getAttribute('data-room-id'));
+            });
+        });
     });
 
     function connectToChat() {
         const socket = new SockJS('/ws');
         stompClient = Stomp.over(socket);
 
-        stompClient.connect({}, function (frame) {
+        // Добавляем заголовок авторизации
+        const headers = {};
+        const token = getCookie('jwt_token'); // Функция для получения куки
+        if (token) {
+            headers['Authorization'] = 'Bearer ' + token;
+        }
+
+        stompClient.connect(headers, function (frame) {
             console.log('Connected: ' + frame);
-            updateChatControlsState(true, 'Connected!', false, true);
+            updateChatControlsState(true, 'Подключено!', false, true);
 
             stompClient.subscribe('/topic/messages/' + currentChatRoomId, function (messageOutput) {
                 showMessage(JSON.parse(messageOutput.body));
@@ -133,7 +327,7 @@
 
         }, function(error) {
             console.error('STOMP connection error: ' + error);
-            updateChatControlsState(false, 'Connection failed. Please refresh. Error: ' + error, true);
+            updateChatControlsState(false, 'Ошибка подключения. Пожалуйста, обновите страницу. Ошибка: ' + error, true);
         });
     }
 
@@ -148,7 +342,7 @@
 
         if (!messageText) {
             if (contentErrorDiv) {
-                contentErrorDiv.innerHTML = '<p>Content cannot be blank (client-side check)</p>';
+                contentErrorDiv.innerHTML = '<p>Сообщение не может быть пустым</p>';
                 contentErrorDiv.style.display = 'block';
             }
             else console.warn("contentErrorDiv not found");
@@ -168,9 +362,9 @@
             }
         } else {
             console.error('Cannot send message, STOMP client not connected.');
-            updateChatControlsState(false, 'Error: Not connected. Please refresh.', true);
+            updateChatControlsState(false, 'Ошибка: Нет подключения. Обновите страницу.', true);
             if (websocketErrorDiv) {
-                websocketErrorDiv.textContent = 'Error: Not connected. Please refresh.';
+                websocketErrorDiv.textContent = 'Ошибка: Нет подключения. Обновите страницу.';
                 websocketErrorDiv.style.display = 'block';
             }
         }
@@ -229,15 +423,89 @@
                     errorMessageHtml += `<li>${msg}</li>`;
                 });
             } else {
-                errorMessageHtml += `<li>An unspecified error occurred.</li>`;
+                errorMessageHtml += `<li>Произошла неопределенная ошибка.</li>`;
             }
             errorMessageHtml += `</ul>`;
             if (errorPayload.originalDestination) {
-                errorMessageHtml += `<small>Original destination: ${errorPayload.originalDestination}</small>`;
+                errorMessageHtml += `<small>Назначение: ${errorPayload.originalDestination}</small>`;
             }
             websocketErrorDiv.innerHTML = errorMessageHtml;
             websocketErrorDiv.style.display = 'block';
         }
+    }
+
+    // Функция для добавления участника
+    function addMember() {
+        const username = document.getElementById('newMemberUsername').value.trim();
+        if (!username) return;
+
+        fetch(`/api/v1/rooms/${currentChatRoomId}/members?username=${encodeURIComponent(username)}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Не удалось добавить участника');
+            }
+            // Перезагрузка страницы для обновления списка участников
+            window.location.reload();
+        })
+        .catch(error => {
+            alert('Ошибка: ' + error.message);
+        });
+    }
+
+    // Функция для удаления участника
+    function removeMember(username) {
+        if (!confirm(`Вы уверены, что хотите удалить участника ${username}?`)) return;
+
+        fetch(`/api/v1/rooms/${currentChatRoomId}/members/${encodeURIComponent(username)}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Не удалось удалить участника');
+            }
+            // Перезагрузка страницы для обновления списка участников
+            window.location.reload();
+        })
+        .catch(error => {
+            alert('Ошибка: ' + error.message);
+        });
+    }
+
+    // Функция для выхода из комнаты
+    function leaveRoom(roomId) {
+        if (!confirm('Вы уверены, что хотите покинуть эту комнату?')) return;
+
+        fetch(`/api/v1/rooms/${roomId}/leave`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Не удалось покинуть комнату');
+            }
+            // Перенаправление на главную страницу чата
+            window.location.href = '/chat';
+        })
+        .catch(error => {
+            alert('Ошибка: ' + error.message);
+        });
+    }
+
+    // Функция для получения значения куки
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
     }
 
     window.addEventListener('beforeunload', function() {
@@ -247,7 +515,6 @@
             });
         }
     });
-
     /*]]>*/
 </script>
 </body>
