@@ -12,9 +12,9 @@ import java.util.List;
 @AllArgsConstructor
 public class WebSocketErrorDto {
     private LocalDateTime timestamp;
-    private String errorType; // Например, "Validation Error"
-    private List<String> messages; // Список сообщений об ошибках
-    private String originalDestination; // Опционально: куда предназначалось исходное сообщение
+    private String errorType;
+    private List<String> messages;
+    private String originalDestination;
 
     public WebSocketErrorDto(String errorType, List<String> messages, String originalDestination) {
         this.timestamp = LocalDateTime.now();

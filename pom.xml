@@ -23,6 +23,7 @@
         <postgresql.version>42.7.3</postgresql.version>
         <thymeleaf.version>3.1.2.RELEASE</thymeleaf.version>
         <spring-security.version>6.2.4</spring-security.version>
+        <jjwt.version>0.11.5</jjwt.version>
     </properties>
 
     <modules>
@@ -72,18 +73,18 @@
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-api</artifactId>
-                <version>0.11.5</version>
+                <version>${jjwt.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-impl</artifactId>
-                <version>0.11.5</version>
+                <version>${jjwt.version}</version>
                 <scope>runtime</scope>
             </dependency>
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-jackson</artifactId>
-                <version>0.11.5</version>
+                <version>${jjwt.version}</version>
                 <scope>runtime</scope>
             </dependency>
         </dependencies>

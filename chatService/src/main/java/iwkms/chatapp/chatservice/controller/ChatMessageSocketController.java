@@ -49,14 +49,11 @@ public class ChatMessageSocketController {
                     headerAccessor.getDestination()
             );
 
-            // Получаем ID сессии пользователя, который отправил сообщение
             String sessionId = headerAccessor.getSessionId();
             if (sessionId != null) {
-                // Отправляем ошибку на "личную" очередь пользователя
                 messagingTemplate.convertAndSendToUser(sessionId, "/queue/errors", errorDto, headerAccessor.getMessageHeaders());
                 System.err.println("Sent validation errors to user " + sessionId + ": " + errorMessages);
             } else {
-                // Фоллбэк, если ID сессии не доступен (маловероятно для STOMP)
                 System.err.println("Validation errors for WebSocket message, but no session ID found: " + errorMessages);
             }
             return;

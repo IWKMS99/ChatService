@@ -54,7 +54,6 @@
                     <div th:if="${#fields.hasErrors('content')}" class="error" id="contentError">
                         <p th:each="err : ${#fields.errors('content')}" th:text="${err}">Content error</p>
                     </div>
-                    <!-- Место для отображения ошибок WebSocket -->
                     <div id="websocketError" class="error" style="display: none;"></div>
                 </div>
                 <button type="submit" id="sendButton" disabled>Send</button>
@@ -73,8 +72,8 @@
     const messageContentInput = document.getElementById('content');
     const sendButton = document.getElementById('sendButton');
     const connectionStatusDiv = document.getElementById('connectionStatus');
-    const contentErrorDiv = document.getElementById('contentError'); // Уже было, может пригодиться
-    const websocketErrorDiv = document.getElementById('websocketError'); // Новый div для ошибок WebSocket
+    const contentErrorDiv = document.getElementById('contentError');
+    const websocketErrorDiv = document.getElementById('websocketError');
 
     function updateChatControlsState(enableControls, statusMessage, isError = false, hideStatusAfterDelay = false) {
         if (messageContentInput) {
@@ -124,12 +123,10 @@
             console.log('Connected: ' + frame);
             updateChatControlsState(true, 'Connected!', false, true);
 
-            // Подписка на сообщения комнаты
             stompClient.subscribe('/topic/messages/' + currentChatRoomId, function (messageOutput) {
                 showMessage(JSON.parse(messageOutput.body));
             });
 
-            // Подписка на личную очередь ошибок
             stompClient.subscribe('/user/queue/errors', function (errorOutput) {
                 displayWebSocketError(JSON.parse(errorOutput.body));
             });
@@ -141,7 +138,6 @@
     }
 
     function sendMessage() {
-        // Сначала очистим предыдущие ошибки
         if (contentErrorDiv) contentErrorDiv.innerHTML = '';
         if (websocketErrorDiv) {
             websocketErrorDiv.innerHTML = '';
@@ -173,7 +169,7 @@
         } else {
             console.error('Cannot send message, STOMP client not connected.');
             updateChatControlsState(false, 'Error: Not connected. Please refresh.', true);
-            if (websocketErrorDiv) { // Показываем ошибку и здесь
+            if (websocketErrorDiv) {
                 websocketErrorDiv.textContent = 'Error: Not connected. Please refresh.';
                 websocketErrorDiv.style.display = 'block';
             }
@@ -224,7 +220,6 @@
         messagesArea.scrollTop = messagesArea.scrollHeight;
     }
 
-    // Новая функция для отображения ошибок WebSocket
     function displayWebSocketError(errorPayload) {
         console.error("WebSocket Error Received:", errorPayload);
         if (websocketErrorDiv) {

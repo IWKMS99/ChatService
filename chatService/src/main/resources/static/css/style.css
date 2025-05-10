@@ -91,19 +91,17 @@ button:hover {
 }
 
 .message.my-message {
-    text-align: right; /* Выравниваем свои сообщения по правому краю */
-    /* background-color: #e1ffc7; /* Легкий фон для своих сообщений */
+    text-align: right;
 }
 
 .message.my-message .sender {
-    color: #007bff; /* Цвет своего имени отправителя */
+    color: #007bff;
 }
 
 .message.other-message {
-    text-align: left; /* Чужие сообщения по левому краю */
-    /* background-color: #f1f0f0; /* Легкий фон для чужих сообщений */
+    text-align: left;
 }
 
 .message.other-message .sender {
-    color: #28a745; /* Цвет имени отправителя другого пользователя */
+    color: #28a745; 
 }

@@ -2,7 +2,6 @@ package iwkms.chatapp.authservice.config;
 
 import iwkms.chatapp.authservice.config.jwt.JwtAuthenticationEntryPoint;
 import iwkms.chatapp.authservice.config.jwt.JwtAuthenticationFilter;
-// UserDetailsServiceImpl is used by AuthenticationManager, no direct inject needed here
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
