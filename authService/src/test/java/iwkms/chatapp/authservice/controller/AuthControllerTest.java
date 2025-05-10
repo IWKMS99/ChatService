@@ -22,7 +22,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Collections;
-import java.util.Arrays;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -61,7 +60,6 @@ class AuthControllerTest {
         registrationDto = new RegistrationDto();
         registrationDto.setUsername("testuser");
         registrationDto.setPassword("password123");
-        // registrationDto.setEmail("test@example.com"); // Если бы было поле email
 
         loginRequestDto = new LoginRequestDto();
         loginRequestDto.setUsername("testuser");
@@ -82,7 +80,7 @@ class AuthControllerTest {
         ResultActions response = mockMvc.perform(post("/api/v1/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(registrationDto))
-                .with(csrf())); // Добавляем CSRF токен, если CSRF включен (WebMvcTest может его требовать по умолчанию)
+                .with(csrf()));
 
         response.andExpect(status().isCreated())
                 .andExpect(jsonPath("$.message").value("Пользователь testuser успешно зарегистрирован"));
@@ -90,7 +88,7 @@ class AuthControllerTest {
 
     @Test
     void testRegisterUser_ValidationError_EmptyUsername() throws Exception {
-        registrationDto.setUsername(""); // Невалидное имя
+        registrationDto.setUsername("");
 
         ResultActions response = mockMvc.perform(post("/api/v1/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -141,7 +139,6 @@ class AuthControllerTest {
 
     @Test
     void testLogin_Success() throws Exception {
-        // Используем org.springframework.security.core.userdetails.User
         org.springframework.security.core.userdetails.UserDetails springUserDetails = 
             new org.springframework.security.core.userdetails.User(loginRequestDto.getUsername(), "encodedPassword", 
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
@@ -236,7 +233,7 @@ class AuthControllerTest {
 
     @Test
     void testLogin_ValidationError() throws Exception {
-        loginRequestDto.setUsername(""); // Невалидные данные
+        loginRequestDto.setUsername("");
 
         ResultActions response = mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -254,8 +251,7 @@ class AuthControllerTest {
     @WithMockUser(username = "testuser", authorities = {"ROLE_USER", "ROLE_ADMIN"})
     void testCurrentUserInfo_Authenticated() throws Exception {
         ResultActions response = mockMvc.perform(get("/api/v1/auth/me")
-                .with(csrf())); // CSRF может быть не нужен для GET, но для консистентности
-
+                .with(csrf()));
         response.andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("testuser"))
                 .andExpect(jsonPath("$.authorities", hasItem("ROLE_USER")))
@@ -264,7 +260,6 @@ class AuthControllerTest {
     
     @Test
     void testCurrentUserInfo_Unauthorized_NoToken() throws Exception {
-        // Выполняем запрос без какой-либо аутентификации
         ResultActions response = mockMvc.perform(get("/api/v1/auth/me")
                 .with(csrf()));
 

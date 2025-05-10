@@ -73,11 +73,11 @@ public class GlobalExceptionHandler {
                         logger.warn("Validation error with null field name or message for object: {} - Field: {}", fieldError.getObjectName(), fieldName);
                         errors.put(fieldName != null ? fieldName : "unknownField", errorMessage != null ? errorMessage : "Unknown error message for field " + (fieldName != null ? fieldName : "unknownField"));
                     }
-                } else if (error != null) { // Handle ObjectError as well
+                } else if (error != null) {
                     String objectName = error.getObjectName();
                     String errorMessage = error.getDefaultMessage();
                     if (objectName != null && errorMessage != null) {
-                        errors.put(objectName, errorMessage); // Using objectName as key for global errors
+                        errors.put(objectName, errorMessage);
                     } else {
                         logger.warn("Global validation error with null object name or message. Code: {}", error.getCode());
                         errors.put(objectName != null ? objectName : "unknownObject", errorMessage != null ? errorMessage : "Unknown global error message for " + (objectName != null ? objectName : "unknownObject"));
