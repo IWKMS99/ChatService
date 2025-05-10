@@ -58,15 +58,12 @@ public class ChatWebController {
         model.addAttribute("currentUsername", username);
         model.addAttribute("currentChatRoomId", chatRoomId);
         
-        // Default empty chat room to prevent null pointer exceptions
         ChatRoom chatRoom = new ChatRoom();
         chatRoom.setMembers(Collections.emptySet());
         model.addAttribute("chatRoom", chatRoom);
         model.addAttribute("messages", Collections.emptyList());
         
-        // Получаем комнаты и сообщения только для аутентифицированных пользователей
         if (isAuthenticated) {
-            // Получить список доступных комнат
             List<ChatRoom> publicRooms = chatRoomService.getPublicChatRooms();
             List<ChatRoom> userRooms = chatRoomService.getUserChatRooms(username);
             model.addAttribute("publicRooms", publicRooms);
@@ -77,7 +74,6 @@ public class ChatWebController {
                     List<ChatMessage> messages = chatService.getMessagesByChatRoom(chatRoomId, username);
                     model.addAttribute("messages", messages);
                     
-                    // Get chat room and update the model attribute with it
                     ChatRoom fetchedRoom = chatRoomService.getChatRoomById(chatRoomId);
                     if (fetchedRoom != null) {
                         model.addAttribute("chatRoom", fetchedRoom);

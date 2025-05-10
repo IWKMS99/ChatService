@@ -10,10 +10,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * Абстрактный класс для настройки безопасности JWT.
- * Предоставляет базовую конфигурацию безопасности для микросервисов.
- */
 public abstract class JwtSecurityConfig {
 
     protected final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -24,22 +20,14 @@ public abstract class JwtSecurityConfig {
         this.jwtAuthenticationEntryPoint = new JwtAuthenticationEntryPoint(objectMapper);
     }
 
-    /**
-     * Создает SecurityFilterChain с базовой настройкой JWT безопасности.
-     * Переопределите этот метод в своей конфигурации, если требуется дополнительная настройка.
-     *
-     * @param http Конфигуратор HttpSecurity
-     * @return Настроенная SecurityFilterChain
-     * @throws Exception если возникают ошибки конфигурации
-     */
     protected SecurityFilterChain configureSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(AbstractHttpConfigurer::disable) // Отключаем CSRF для REST API
+                .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 )
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Stateless для JWT
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

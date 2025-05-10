@@ -10,10 +10,6 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-/**
- * Базовый перехватчик для WebSocket каналов, обеспечивающий JWT аутентификацию.
- * Используется при настройке WebSocketMessageBrokerConfigurer.configureClientInboundChannel.
- */
 public class JwtWebSocketChannelInterceptor implements ChannelInterceptor {
 
     private final JwtUtil jwtUtil;
@@ -32,19 +28,12 @@ public class JwtWebSocketChannelInterceptor implements ChannelInterceptor {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 String token = authHeader.substring(7);
 
-                // Используем централизованный метод из JwtUtil
                 Authentication authentication = jwtUtil.getAuthentication(token);
 
                 if (authentication != null) {
                     accessor.setUser(authentication);
-                    // SecurityContextHolder может не пробрасываться автоматически в потоки обработки WebSocket сообщений
-                    // в зависимости от настройки. Устанавливать здесь - хорошая мера.
-                    // Однако для @MessageMapping методов часто предпочтительнее использовать SimpMessageHeaderAccessor.getUser().
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
-                // Если authentication равен null, токен недействительный или просрочен.
-                // Соединение, вероятно, завершится ошибкой или продолжится без аутентификации,
-                // в зависимости от настройки безопасности.
             }
         }
         return message;

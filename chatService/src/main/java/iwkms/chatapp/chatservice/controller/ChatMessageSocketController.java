@@ -38,7 +38,6 @@ public class ChatMessageSocketController {
     @MessageMapping("/chat.sendMessage")
     public void sendMessage(@Payload ChatMessageDto chatMessageDto, 
                            SimpMessageHeaderAccessor headerAccessor) {
-        // Проверка валидации
         Errors errors = new BeanPropertyBindingResult(chatMessageDto, "chatMessageDto");
         validator.validate(chatMessageDto, errors);
 
@@ -48,7 +47,6 @@ public class ChatMessageSocketController {
         }
 
         try {
-            // Получаем текущего пользователя из контекста безопасности
             Authentication authentication = (Authentication) headerAccessor.getUser();
             if (authentication == null) {
                 sendError(headerAccessor, "Unauthorized", "Вы не авторизованы");
@@ -57,15 +55,12 @@ public class ChatMessageSocketController {
             
             String username = authentication.getName();
             
-            // Убедиться, что отправитель сообщения - текущий пользователь
             if (!username.equals(chatMessageDto.getSenderUsername())) {
                 chatMessageDto.setSenderUsername(username);
             }
             
-            // Сохраняем сообщение
             ChatMessage savedMessage = chatService.saveMessage(chatMessageDto);
             
-            // Отправляем сообщение всем подписчикам
             String destination = "/topic/messages/" + savedMessage.getChatRoomId();
             messagingTemplate.convertAndSend(destination, savedMessage);
             

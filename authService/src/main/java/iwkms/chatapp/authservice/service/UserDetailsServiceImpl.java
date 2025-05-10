@@ -27,8 +27,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 userEntity.getUsername(),
                 userEntity.getPassword(),
                 userEntity.isEnabled(),
-                true, // accountNonExpired - assuming true for now, can be added to UserEntity
-                true, // credentialsNonExpired - assuming true for now, can be added to UserEntity
+                true,
+                true,
                 userEntity.isAccountNonLocked(),
                 userEntity.getRoles().stream()
                         .map(SimpleGrantedAuthority::new)

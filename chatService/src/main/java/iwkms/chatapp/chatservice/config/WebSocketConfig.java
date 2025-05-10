@@ -31,13 +31,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*") // Consider restricting in production
+                .setAllowedOriginPatterns("*")
                 .withSockJS();
     }
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        // Используем готовый перехватчик из общей библиотеки
         registration.interceptors(new JwtWebSocketChannelInterceptor(jwtUtil));
     }
 }

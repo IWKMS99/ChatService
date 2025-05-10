@@ -25,7 +25,6 @@ public class ChatController {
     @PostMapping
     public ResponseEntity<ChatMessage> sendMessage(@Valid @RequestBody ChatMessageDto messageDto,
                                                   Authentication authentication) {
-        // Убедиться, что отправитель сообщения - текущий пользователь
         String username = authentication.getName();
         if (!username.equals(messageDto.getSenderUsername())) {
             messageDto.setSenderUsername(username);

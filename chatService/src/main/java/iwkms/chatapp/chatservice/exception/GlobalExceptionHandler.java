@@ -78,7 +78,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorDetails, status);
     }
     
-    // Вложенный класс для представления деталей ошибки
     public static class ErrorDetails {
         private LocalDateTime timestamp;
         private String message;

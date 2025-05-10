@@ -11,5 +11,5 @@ import java.util.Collection;
 @AllArgsConstructor
 public class UserInfoResponseDto {
     private String username;
-    private Collection<?> authorities; // Using Collection<?> to match Authentication.getAuthorities()
+    private Collection<?> authorities;
 } 

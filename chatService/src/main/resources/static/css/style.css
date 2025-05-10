@@ -1,11 +1,9 @@
-/* Базовые стили, дополняющие Bootstrap */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background-color: #f4f4f8;
     color: #333;
 }
 
-/* Стили для сообщений */
 .messages-area {
     height: 450px;
     overflow-y: auto;
@@ -58,14 +56,12 @@ body {
     font-style: italic;
 }
 
-/* Стили для ошибок */
 .error {
     color: #dc3545;
     font-size: 0.875em;
     margin-top: 5px;
 }
 
-/* Улучшения для списка комнат */
 .list-group-item.active {
     background-color: #0d6efd;
     border-color: #0d6efd;
@@ -76,7 +72,6 @@ body {
     color: white;
 }
 
-/* Исправления и улучшения для мобильных устройств */
 @media (max-width: 767.98px) {
     .messages-area {
         height: 350px;
@@ -87,12 +82,10 @@ body {
     }
 }
 
-/* Анимации */
 .modal.fade .modal-dialog {
     transition: transform .3s ease-out;
 }
 
-/* Дополнительные стили для кнопок */
 .btn-outline-primary {
     border-color: #0d6efd;
     color: #0d6efd;
@@ -113,12 +106,10 @@ body {
     color: white;
 }
 
-/* Стили для веб-сокет статуса */
 #connectionStatus {
     font-size: 0.875em;
 }
 
-/* Улучшения для форм */
 textarea:focus, 
 input:focus {
     border-color: #80bdff;

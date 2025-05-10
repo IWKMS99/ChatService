@@ -34,7 +34,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<GenericResponseDto> register(@Valid @RequestBody RegistrationDto registrationDto) {
-        UserEntity savedUser = userService.registerUser(registrationDto); // Can throw UserAlreadyExistsException
+        UserEntity savedUser = userService.registerUser(registrationDto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new GenericResponseDto("Пользователь " + savedUser.getUsername() + " успешно зарегистрирован"));
     }
@@ -55,7 +55,7 @@ public class AuthController {
         } catch (LockedException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(new ErrorResponseDto(HttpStatus.FORBIDDEN.value(), "Forbidden", "Учетная запись пользователя заблокирована: " + e.getMessage(), request.getRequestURI()));
-        } catch (AuthenticationException e) { // Catchall for other auth issues
+        } catch (AuthenticationException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ErrorResponseDto(HttpStatus.UNAUTHORIZED.value(), "Unauthorized", "Ошибка аутентификации: " + e.getMessage(), request.getRequestURI()));
         }
@@ -78,7 +78,7 @@ public class AuthController {
         if (principal instanceof UserDetails userDetails) {
             username = userDetails.getUsername();
         } else {
-            username = principal.toString(); // Fallback
+            username = principal.toString();
         }
 
         return ResponseEntity.ok(new UserInfoResponseDto(username, authentication.getAuthorities()));

@@ -6,7 +6,6 @@
     <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-    <!-- Добавляем Bootstrap для улучшения дизайна -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
@@ -14,12 +13,10 @@
 <div class="container mt-4">
     <h1 class="mb-4">Chat Service</h1>
 
-    <!-- Уведомление об ошибке -->
     <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}">
         Error message
     </div>
 
-    <!-- Блок для неаутентифицированных пользователей -->
     <div th:if="${!isAuthenticated}" class="auth-warning">
         <div class="alert alert-warning" role="alert">
             <p><strong>Внимание!</strong> Вы не авторизованы. Для полноценного использования чата, пожалуйста, авторизуйтесь.</p>
@@ -28,23 +25,19 @@
         </div>
     </div>
 
-    <!-- Основной блок чата для авторизованных пользователей -->
     <div th:if="${isAuthenticated}" class="row">
-        <!-- Левая колонка - список комнат -->
         <div class="col-md-4">
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">Чат-комнаты</h5>
                 </div>
                 <div class="card-body">
-                    <!-- Форма создания новой комнаты -->
                     <div class="mb-3">
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRoomModal">
                             Создать комнату
                         </button>
                     </div>
 
-                    <!-- Секция публичных комнат -->
                     <h6>Публичные комнаты</h6>
                     <div class="list-group mb-3">
                         <div th:if="${#lists.isEmpty(publicRooms)}" class="text-muted small">
@@ -61,7 +54,6 @@
                         </a>
                     </div>
 
-                    <!-- Секция приватных комнат -->
                     <h6>Мои комнаты</h6>
                     <div class="list-group">
                         <div th:if="${#lists.isEmpty(userRooms)}" class="text-muted small">
@@ -84,9 +76,7 @@
             </div>
         </div>
 
-        <!-- Правая колонка - чат и управление участниками -->
         <div class="col-md-8">
-            <!-- Блок с сообщениями и формой отправки -->
             <div th:if="${currentChatRoomId != null and currentChatRoomId != ''}" class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 th:text="${chatRoom != null ? chatRoom.name : 'Чат'}" class="mb-0">Чат</h5>
@@ -133,14 +123,12 @@
                 </div>
             </div>
 
-            <!-- Сообщение, если комната не выбрана -->
             <div th:if="${currentChatRoomId == null or currentChatRoomId == ''}" class="text-center my-5">
                 <p class="lead">Выберите чат-комнату из списка слева или создайте новую.</p>
             </div>
         </div>
     </div>
 
-    <!-- Модальное окно для создания комнаты -->
     <div class="modal fade" id="createRoomModal" tabindex="-1" aria-labelledby="createRoomModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -181,7 +169,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно для управления участниками -->
     <div class="modal fade" id="membersModal" tabindex="-1" aria-labelledby="membersModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -190,7 +177,6 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- Форма добавления участника -->
                     <div th:if="${chatRoom != null && chatRoom.hasMember(currentUsername)}" class="mb-4">
                         <h6>Добавить участника</h6>
                         <form id="addMemberForm" class="d-flex">
@@ -199,7 +185,6 @@
                         </form>
                     </div>
                     
-                    <!-- Список участников -->
                     <h6>Текущие участники</h6>
                     <ul class="list-group" id="membersList">
                         <li th:if="${chatRoom != null}" th:each="member : ${chatRoom.members}" 
@@ -224,7 +209,6 @@
     </div>
 </div>
 
-<!-- Bootstrap и дополнительные скрипты -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script th:inline="javascript">
@@ -278,7 +262,6 @@
             });
         }
 
-        // Обработчик для формы добавления участника
         const addMemberForm = document.getElementById('addMemberForm');
         if (addMemberForm) {
             addMemberForm.addEventListener('submit', function(event) {
@@ -287,14 +270,12 @@
             });
         }
 
-        // Обработчики для кнопок удаления участников
         document.querySelectorAll('.remove-member-btn').forEach(button => {
             button.addEventListener('click', function() {
                 removeMember(this.getAttribute('data-username'));
             });
         });
 
-        // Обработчик для кнопки "Покинуть комнату"
         document.querySelectorAll('.leave-room-btn').forEach(button => {
             button.addEventListener('click', function() {
                 leaveRoom(this.getAttribute('data-room-id'));
@@ -306,9 +287,8 @@
         const socket = new SockJS('/ws');
         stompClient = Stomp.over(socket);
 
-        // Добавляем заголовок авторизации
         const headers = {};
-        const token = getCookie('jwt_token'); // Функция для получения куки
+        const token = getCookie('jwt_token');
         if (token) {
             headers['Authorization'] = 'Bearer ' + token;
         }
@@ -434,7 +414,6 @@
         }
     }
 
-    // Функция для добавления участника
     function addMember() {
         const username = document.getElementById('newMemberUsername').value.trim();
         if (!username) return;
@@ -449,7 +428,6 @@
             if (!response.ok) {
                 throw new Error('Не удалось добавить участника');
             }
-            // Перезагрузка страницы для обновления списка участников
             window.location.reload();
         })
         .catch(error => {
@@ -457,7 +435,6 @@
         });
     }
 
-    // Функция для удаления участника
     function removeMember(username) {
         if (!confirm(`Вы уверены, что хотите удалить участника ${username}?`)) return;
 
@@ -471,7 +448,6 @@
             if (!response.ok) {
                 throw new Error('Не удалось удалить участника');
             }
-            // Перезагрузка страницы для обновления списка участников
             window.location.reload();
         })
         .catch(error => {
@@ -479,7 +455,6 @@
         });
     }
 
-    // Функция для выхода из комнаты
     function leaveRoom(roomId) {
         if (!confirm('Вы уверены, что хотите покинуть эту комнату?')) return;
 
@@ -493,7 +468,6 @@
             if (!response.ok) {
                 throw new Error('Не удалось покинуть комнату');
             }
-            // Перенаправление на главную страницу чата
             window.location.href = '/chat';
         })
         .catch(error => {
@@ -501,7 +475,6 @@
         });
     }
 
-    // Функция для получения значения куки
     function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);

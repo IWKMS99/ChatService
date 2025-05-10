@@ -14,10 +14,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Обработчик ошибок аутентификации JWT.
- * Возвращает HTTP 401 с сообщением об ошибке в виде JSON.
- */
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationEntryPoint.class);

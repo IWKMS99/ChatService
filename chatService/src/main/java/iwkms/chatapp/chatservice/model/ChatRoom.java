@@ -47,10 +47,9 @@ public class ChatRoom {
         this.isPrivate = isPrivate;
         this.createdAt = LocalDateTime.now();
         this.ownerUsername = creatorUsername;
-        this.members.add(creatorUsername); // Создатель автоматически является участником
+        this.members.add(creatorUsername);
     }
 
-    // Для совместимости со старым кодом
     public ChatRoom(String roomId, String name, String description, boolean isPrivate) {
         this(roomId, name, description, isPrivate, "system");
     }
@@ -60,7 +59,6 @@ public class ChatRoom {
     }
 
     public void removeMember(String username) {
-        // Владельца нельзя удалить из комнаты
         if (!username.equals(ownerUsername)) {
             this.members.remove(username);
         }

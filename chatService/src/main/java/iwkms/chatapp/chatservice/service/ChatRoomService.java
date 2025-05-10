@@ -34,7 +34,6 @@ public class ChatRoomService {
                 creatorUsername
         );
         
-        // Создатель автоматически добавлен в конструкторе
         return chatRoomRepository.save(chatRoom);
     }
 
@@ -48,7 +47,6 @@ public class ChatRoomService {
     public void addMemberToChatRoom(String roomId, String username, String requestingUsername) {
         ChatRoom chatRoom = getChatRoomById(roomId);
         
-        // Проверить, имеет ли запрашивающий пользователь право добавлять участников
         if (!chatRoom.hasMember(requestingUsername)) {
             throw new UnauthorizedException("Только участники комнаты могут добавлять новых участников");
         }
@@ -61,12 +59,10 @@ public class ChatRoomService {
     public void removeMemberFromChatRoom(String roomId, String username, String requestingUsername) {
         ChatRoom chatRoom = getChatRoomById(roomId);
         
-        // Проверить, имеет ли запрашивающий пользователь право удалять участников
         if (!chatRoom.isOwner(requestingUsername) && !username.equals(requestingUsername)) {
             throw new UnauthorizedException("Только владелец комнаты может удалять других участников");
         }
         
-        // Владелец не может быть удален
         if (chatRoom.isOwner(username) && !username.equals(requestingUsername)) {
             throw new UnauthorizedException("Владелец комнаты не может быть удален");
         }
@@ -75,7 +71,6 @@ public class ChatRoomService {
         chatRoomRepository.save(chatRoom);
     }
 
-    // Добавляем удобный метод для совместимости со старым кодом
     @Transactional
     public void addMemberToChatRoom(String roomId, String username) {
         ChatRoom chatRoom = getChatRoomById(roomId);
@@ -83,7 +78,6 @@ public class ChatRoomService {
         chatRoomRepository.save(chatRoom);
     }
 
-    // Добавляем удобный метод для совместимости со старым кодом
     @Transactional
     public void removeMemberFromChatRoom(String roomId, String username) {
         ChatRoom chatRoom = getChatRoomById(roomId);
@@ -95,10 +89,8 @@ public class ChatRoomService {
     public boolean checkMembership(String roomId, String username) {
         ChatRoom chatRoom = getChatRoomById(roomId);
         if (!chatRoom.isPrivate()) {
-            // В публичные комнаты можно писать всем
             return true;
         }
-        // В приватных проверяем членство
         return chatRoom.hasMember(username);
     }
 

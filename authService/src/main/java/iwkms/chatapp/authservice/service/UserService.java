@@ -16,7 +16,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public static final String DEFAULT_USER_ROLE = "USER"; // Consider "ROLE_USER" if your security config expects prefixes
+    public static final String DEFAULT_USER_ROLE = "USER";
 
     @Autowired
     public UserService(UserRepository userRepository,
@@ -33,8 +33,6 @@ public class UserService {
         UserEntity user = UserEntity.builder()
                 .username(registrationDto.getUsername())
                 .password(passwordEncoder.encode(registrationDto.getPassword()))
-                // createdAt is now set automatically by @CreationTimestamp
-                // enabled and accountNonLocked default to true in UserEntity
                 .build();
         user.getRoles().add(DEFAULT_USER_ROLE);
         return userRepository.save(user);

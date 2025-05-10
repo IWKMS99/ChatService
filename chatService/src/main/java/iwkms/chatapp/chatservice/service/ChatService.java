@@ -30,25 +30,21 @@ public class ChatService {
 
     @Transactional
     public ChatMessage saveMessage(ChatMessageDto messageDto) {
-        // Проверить, существует ли комната
         if (!chatRoomRepository.existsByRoomId(messageDto.getChatRoomId())) {
-            // Если комнаты нет, создадим публичную комнату с этим ID и текущим пользователем как владельцем
             ChatRoom chatRoom = new ChatRoom(
                     messageDto.getChatRoomId(),
                     "Комната " + messageDto.getChatRoomId(),
                     "Автоматически созданная комната",
                     false,
-                    messageDto.getSenderUsername() // Отправитель становится владельцем
+                    messageDto.getSenderUsername()
             );
             chatRoomRepository.save(chatRoom);
         }
         
-        // Проверить право на отправку сообщений
         if (!chatRoomService.checkMembership(messageDto.getChatRoomId(), messageDto.getSenderUsername())) {
             throw new UnauthorizedException("Вы не являетесь участником этой приватной комнаты");
         }
 
-        // Сохранить сообщение
         ChatMessage chatMessage = new ChatMessage();
         chatMessage.setSenderUsername(messageDto.getSenderUsername());
         chatMessage.setChatRoomId(messageDto.getChatRoomId());
@@ -59,7 +55,6 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public List<ChatMessage> getMessagesByChatRoom(String chatRoomId, String username) {
-        // Проверить право на чтение сообщений
         if (!chatRoomService.checkMembership(chatRoomId, username)) {
             throw new UnauthorizedException("Вы не имеете доступа к этой приватной комнате");
         }

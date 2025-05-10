@@ -24,7 +24,6 @@ public class SecurityConfig extends JwtSecurityConfig {
                 .anyRequest().authenticated()
         );
         
-        // Вызываем конфигурацию из родительского класса JwtSecurityConfig
         return configureSecurityFilterChain(http);
     }
 } 

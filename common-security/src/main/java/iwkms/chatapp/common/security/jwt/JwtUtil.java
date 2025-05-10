@@ -20,10 +20,7 @@ import java.security.Key;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Утилитарный класс для работы с JWT токенами.
- * Обеспечивает генерацию, валидацию и извлечение данных из JWT.
- */
+
 @Component
 public class JwtUtil {
     private static final Logger logger = LoggerFactory.getLogger(JwtUtil.class);
@@ -34,12 +31,6 @@ public class JwtUtil {
     private final String jwtPrefix;
     public static final String ROLES_CLAIM = "roles";
 
-    /**
-     * Конструктор с инъекцией настроек через property плейсхолдеры.
-     * 
-     * @param secret Секретный ключ для подписи JWT
-     * @param jwtExpirationMs Время жизни JWT в миллисекундах
-     */
     public JwtUtil(@Value("${jwt.secret}") String secret,
                    @Value("${jwt.expiration.ms:3600000}") long jwtExpirationMs) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes());
@@ -48,12 +39,6 @@ public class JwtUtil {
         this.jwtPrefix = "Bearer ";
     }
 
-    /**
-     * Извлекает токен из заголовка Authorization запроса.
-     * 
-     * @param request HTTP запрос
-     * @return JWT токен без префикса 'Bearer ' или null, если токен не найден
-     */
     public String extractTokenFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader(jwtHeader);
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(jwtPrefix)) {
@@ -62,12 +47,6 @@ public class JwtUtil {
         return null;
     }
 
-    /**
-     * Валидирует JWT токен.
-     * 
-     * @param token JWT токен для проверки
-     * @return true если токен валидный, false в противном случае
-     */
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
@@ -86,34 +65,16 @@ public class JwtUtil {
         return false;
     }
 
-    /**
-     * Извлекает имя пользователя из JWT токена.
-     * 
-     * @param token JWT токен
-     * @return Имя пользователя
-     */
     public String getUsernameFromToken(String token) {
         return Jwts.parserBuilder().setSigningKey(key).build()
                 .parseClaimsJws(token).getBody().getSubject();
     }
 
-    /**
-     * Извлекает все claims из JWT токена.
-     * 
-     * @param token JWT токен
-     * @return Claims из токена
-     */
     public Claims getClaimsFromToken(String token) {
         return Jwts.parserBuilder().setSigningKey(key).build()
                 .parseClaimsJws(token).getBody();
     }
 
-    /**
-     * Создает объект Authentication на основе JWT токена.
-     * 
-     * @param token JWT токен
-     * @return Объект Authentication или null, если токен невалидный
-     */
     public Authentication getAuthentication(String token) {
         if (!validateToken(token)) {
             return null;
@@ -135,19 +96,13 @@ public class JwtUtil {
 
         UserDetails userDetails = User.builder()
                 .username(username)
-                .password("") // Пароль не нужен при получении из токена
+                .password("")
                 .authorities(authorities)
                 .build();
         
         return new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
     }
 
-    /**
-     * Генерирует JWT токен на основе объекта Authentication.
-     * 
-     * @param authentication Объект аутентификации
-     * @return JWT токен
-     */
     public String generateToken(Authentication authentication) {
         String username;
         Collection<? extends GrantedAuthority> authorities;
