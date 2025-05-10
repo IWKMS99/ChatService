@@ -1,21 +1,34 @@
 package iwkms.chatapp.chatservice.controller;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.servlet.view.RedirectView;
 
 @Controller
 public class AuthRedirectController {
+    @Value("${auth-service.url:http://localhost:8080/auth}")
+    private String authServiceBaseUrl;
 
-    private static final String AUTH_SERVICE_URL = "http://localhost:8082"; 
+    @Value("${chat-service.url:http://localhost:8081/chat}")
+    private String chatServiceRedirectUrl;
 
-    @GetMapping("/api/v1/auth/login")
+    @GetMapping("/login")
     public RedirectView redirectToLogin() {
-        return new RedirectView(AUTH_SERVICE_URL + "/login");
+        String redirectUrl = UriComponentsBuilder.fromHttpUrl(authServiceBaseUrl)
+                .path("/login")
+                .queryParam("redirect", chatServiceRedirectUrl)
+                .toUriString();
+        return new RedirectView(redirectUrl);
     }
 
-    @GetMapping("/api/v1/auth/register")
+    @GetMapping("/register")
     public RedirectView redirectToRegister() {
-        return new RedirectView(AUTH_SERVICE_URL + "/register");
+        String redirectUrl = UriComponentsBuilder.fromHttpUrl(authServiceBaseUrl)
+                .path("/register")
+                .queryParam("redirect", chatServiceRedirectUrl)
+                .toUriString();
+        return new RedirectView(redirectUrl);
     }
 } 

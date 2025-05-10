@@ -66,14 +66,16 @@ class ChatMessageSocketControllerTest {
         chatMessage.setContent(MESSAGE_CONTENT);
         chatMessage.setTimestamp(LocalDateTime.now());
         
-        when(headerAccessor.getUser()).thenReturn(authentication);
-        when(authentication.getName()).thenReturn(USER_NAME);
-        when(headerAccessor.getSessionId()).thenReturn(SESSION_ID);
+        lenient().when(headerAccessor.getUser()).thenReturn(authentication);
+        lenient().when(authentication.getName()).thenReturn(USER_NAME);
+        lenient().when(headerAccessor.getSessionId()).thenReturn(SESSION_ID);
     }
 
     @Test
     void sendMessage_Success() {
         when(chatService.saveMessage(any(ChatMessageDto.class))).thenReturn(chatMessage);
+        when(headerAccessor.getUser()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn(USER_NAME);
         
         controller.sendMessage(messageDto, headerAccessor);
         
@@ -85,6 +87,8 @@ class ChatMessageSocketControllerTest {
     void sendMessage_OverrideUsername() {
         ArgumentCaptor<ChatMessageDto> dtoCaptor = ArgumentCaptor.forClass(ChatMessageDto.class);
         when(chatService.saveMessage(dtoCaptor.capture())).thenReturn(chatMessage);
+        when(headerAccessor.getUser()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn(USER_NAME);
         
         messageDto.setSenderUsername("spoofedUser");
         
@@ -96,6 +100,9 @@ class ChatMessageSocketControllerTest {
 
     @Test
     void sendMessage_UnauthorizedAccess() {
+        when(headerAccessor.getUser()).thenReturn(authentication);
+        when(authentication.getName()).thenReturn(USER_NAME);
+        when(headerAccessor.getSessionId()).thenReturn(SESSION_ID);
         when(chatService.saveMessage(any(ChatMessageDto.class)))
                 .thenThrow(new UnauthorizedException("Вы не являетесь участником этой приватной комнаты"));
         
@@ -113,6 +120,7 @@ class ChatMessageSocketControllerTest {
     @Test
     void sendMessage_Unauthenticated() {
         when(headerAccessor.getUser()).thenReturn(null);
+        when(headerAccessor.getSessionId()).thenReturn(SESSION_ID);
         
         controller.sendMessage(messageDto, headerAccessor);
         

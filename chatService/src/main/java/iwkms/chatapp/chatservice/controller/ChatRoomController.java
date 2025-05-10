@@ -32,13 +32,24 @@ public class ChatRoomController {
     }
 
     @GetMapping("/{roomId}")
-    public ResponseEntity<ChatRoom> getChatRoom(@PathVariable String roomId) {
-        return ResponseEntity.ok(chatRoomService.getChatRoomById(roomId));
+    public ResponseEntity<ChatRoom> getChatRoom(@PathVariable String roomId, Authentication authentication) {
+        ChatRoom room = chatRoomService.getChatRoomById(roomId);
+        if (room.isPrivate()) {
+            String username = authentication.getName();
+            if (!chatRoomService.checkMembership(roomId, username) && !room.getOwnerUsername().equals(username)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
+        return ResponseEntity.ok(room);
     }
 
     @GetMapping("/public")
     public ResponseEntity<List<ChatRoom>> getPublicRooms() {
-        return ResponseEntity.ok(chatRoomService.getPublicChatRooms());
+        List<ChatRoom> publicRooms = chatRoomService.getPublicChatRooms();
+        if (publicRooms.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(publicRooms);
     }
 
     @GetMapping("/my")

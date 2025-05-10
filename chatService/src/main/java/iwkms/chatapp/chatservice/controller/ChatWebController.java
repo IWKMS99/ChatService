@@ -8,7 +8,6 @@ import iwkms.chatapp.chatservice.service.ChatService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -35,57 +34,63 @@ public class ChatWebController {
 
     @GetMapping("/chat")
     public String chatPage(@RequestParam(name = "chatRoomId", required = false) String chatRoomId,
-                           Model model) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication != null && authentication.isAuthenticated() && 
-                          !authentication.getPrincipal().equals("anonymousUser") ? 
-                          authentication.getName() : null;
+                           Model model, Authentication authentication, RedirectAttributes redirectAttributes) {
         
-        boolean isAuthenticated = username != null;
+        String username = null;
+        boolean isAuthenticated = false;
+        if (authentication != null && authentication.isAuthenticated() && !authentication.getPrincipal().equals("anonymousUser")) {
+            username = authentication.getName();
+            isAuthenticated = true;
+        }
+        
         model.addAttribute("isAuthenticated", isAuthenticated);
+
+        if (!isAuthenticated) {
+            return "redirect:/login";
+        }
         
+        model.addAttribute("currentUsername", username);
+
         if (!model.containsAttribute("messageDto")) {
             ChatMessageDto newMessageDto = new ChatMessageDto();
-            if (isAuthenticated) {
-                newMessageDto.setSenderUsername(username);
-                if (chatRoomId != null) {
-                    newMessageDto.setChatRoomId(chatRoomId);
-                }
+            newMessageDto.setSenderUsername(username);
+            if (chatRoomId != null) {
+                newMessageDto.setChatRoomId(chatRoomId);
             }
             model.addAttribute("messageDto", newMessageDto);
         }
-
-        model.addAttribute("currentUsername", username);
+        
         model.addAttribute("currentChatRoomId", chatRoomId);
         
-        ChatRoom chatRoom = new ChatRoom();
-        chatRoom.setMembers(Collections.emptySet());
-        model.addAttribute("chatRoom", chatRoom);
-        model.addAttribute("messages", Collections.emptyList());
-        
-        if (isAuthenticated) {
-            List<ChatRoom> publicRooms = chatRoomService.getPublicChatRooms();
-            List<ChatRoom> userRooms = chatRoomService.getUserChatRooms(username);
-            model.addAttribute("publicRooms", publicRooms);
-            model.addAttribute("userRooms", userRooms);
+        List<ChatRoom> publicRooms = chatRoomService.getPublicChatRooms();
+        List<ChatRoom> userRooms = chatRoomService.getUserChatRooms(username);
+        model.addAttribute("publicRooms", publicRooms);
+        model.addAttribute("userRooms", userRooms);
 
-            if (chatRoomId != null && !chatRoomId.isEmpty()) {
-                try {
-                    List<ChatMessage> messages = chatService.getMessagesByChatRoom(chatRoomId, username);
-                    model.addAttribute("messages", messages);
-                    
-                    ChatRoom fetchedRoom = chatRoomService.getChatRoomById(chatRoomId);
-                    if (fetchedRoom != null) {
-                        model.addAttribute("chatRoom", fetchedRoom);
+        ChatRoom currentChatRoom = null;
+        if (chatRoomId != null && !chatRoomId.isEmpty()) {
+            try {
+                currentChatRoom = chatRoomService.getChatRoomById(chatRoomId);
+                if (currentChatRoom.isPrivate()) {
+                    if (!chatRoomService.checkMembership(chatRoomId, username) && !currentChatRoom.getOwnerUsername().equals(username)) {
+                        redirectAttributes.addFlashAttribute("errorMessage", "You do not have access to this private room.");
+                        return "redirect:/chat?accessDenied=true";
                     }
-                } catch (Exception e) {
-                    model.addAttribute("errorMessage", e.getMessage());
                 }
+                model.addAttribute("chatRoom", currentChatRoom);
+                List<ChatMessage> messages = chatService.getMessagesByChatRoom(chatRoomId, username);
+                model.addAttribute("messages", messages);
+
+            } catch (iwkms.chatapp.chatservice.exception.ResourceNotFoundException e) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Chat room not found: " + chatRoomId);
+                return "redirect:/chat?roomNotFound=true";
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Error accessing room: " + e.getMessage());
+                return "redirect:/chat?error=true";
             }
         } else {
-            model.addAttribute("loginRequired", true);
-            model.addAttribute("publicRooms", Collections.emptyList());
-            model.addAttribute("userRooms", Collections.emptyList());
+            model.addAttribute("chatRoom", new ChatRoom());
+            model.addAttribute("messages", Collections.emptyList());
         }
 
         return "chat";

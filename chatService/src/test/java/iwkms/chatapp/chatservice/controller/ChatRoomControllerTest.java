@@ -5,6 +5,8 @@ import iwkms.chatapp.chatservice.dto.ChatRoomDto;
 import iwkms.chatapp.chatservice.exception.ResourceNotFoundException;
 import iwkms.chatapp.chatservice.exception.UnauthorizedException;
 import iwkms.chatapp.chatservice.model.ChatRoom;
+import iwkms.chatapp.chatservice.repository.ChatMessageRepository;
+import iwkms.chatapp.chatservice.repository.ChatRoomRepository;
 import iwkms.chatapp.chatservice.service.ChatRoomService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +23,7 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -35,39 +37,63 @@ class ChatRoomControllerTest {
 
     @MockBean
     private ChatRoomService chatRoomService;
+    
+    @MockBean
+    private ChatMessageRepository chatMessageRepository;
+    
+    @MockBean
+    private ChatRoomRepository chatRoomRepository;
 
     private ObjectMapper objectMapper = new ObjectMapper();
     private ChatRoomDto chatRoomDto;
     private ChatRoom chatRoom;
     private final String ROOM_ID = "test-room";
-    private final String USER_NAME = "testUser";
+    private final String ROOM_NAME = "Test Room";
+    private final String USERNAME = "testUser";
 
     @BeforeEach
     void setUp() {
         chatRoomDto = new ChatRoomDto();
-        chatRoomDto.setRoomId(ROOM_ID);
-        chatRoomDto.setName("Test Room");
-        chatRoomDto.setDescription("Test Description");
+        chatRoomDto.setName(ROOM_NAME);
+        chatRoomDto.setDescription("Test description");
         chatRoomDto.setPrivate(false);
 
-        chatRoom = new ChatRoom(ROOM_ID, "Test Room", "Test Description", false, USER_NAME);
+        chatRoom = new ChatRoom();
+        chatRoom.setRoomId(ROOM_ID);
+        chatRoom.setName(ROOM_NAME);
+        chatRoom.setDescription("Test description");
+        chatRoom.setPrivate(false);
+        chatRoom.setOwnerUsername(USERNAME);
     }
 
     @Test
     @WithMockUser(username = "testUser")
     void createChatRoom_Success() throws Exception {
-        when(chatRoomService.createChatRoom(any(ChatRoomDto.class), anyString()))
+        chatRoomDto.setRoomId("new-test-room");
+
+        when(chatRoomService.createChatRoom(any(ChatRoomDto.class), eq(USERNAME)))
                 .thenReturn(chatRoom);
+
+        ChatRoom expectedChatRoom = new ChatRoom();
+        expectedChatRoom.setRoomId(chatRoomDto.getRoomId());
+        expectedChatRoom.setName(chatRoomDto.getName());
+        expectedChatRoom.setDescription(chatRoomDto.getDescription());
+        expectedChatRoom.setPrivate(chatRoomDto.isPrivate());
+        expectedChatRoom.setOwnerUsername(USERNAME);
+
+        when(chatRoomService.createChatRoom(eq(chatRoomDto), eq(USERNAME)))
+                .thenReturn(expectedChatRoom);
 
         mockMvc.perform(post("/api/v1/rooms")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(chatRoomDto)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.roomId", is(ROOM_ID)))
-                .andExpect(jsonPath("$.name", is("Test Room")));
+                .andExpect(jsonPath("$.roomId", is(chatRoomDto.getRoomId())))
+                .andExpect(jsonPath("$.name", is(ROOM_NAME)))
+                .andExpect(jsonPath("$.ownerUsername", is(USERNAME)));
 
-        verify(chatRoomService).createChatRoom(any(ChatRoomDto.class), eq(USER_NAME));
+        verify(chatRoomService).createChatRoom(eq(chatRoomDto), eq(USERNAME));
     }
 
     @Test
@@ -77,7 +103,8 @@ class ChatRoomControllerTest {
 
         mockMvc.perform(get("/api/v1/rooms/{roomId}", ROOM_ID))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.roomId", is(ROOM_ID)));
+                .andExpect(jsonPath("$.roomId", is(ROOM_ID)))
+                .andExpect(jsonPath("$.name", is(ROOM_NAME)));
 
         verify(chatRoomService).getChatRoomById(ROOM_ID);
     }
@@ -114,8 +141,7 @@ class ChatRoomControllerTest {
         when(chatRoomService.getPublicChatRooms()).thenReturn(Collections.emptyList());
 
         mockMvc.perform(get("/api/v1/rooms/public"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(0)));
+                .andExpect(status().isNoContent());
 
         verify(chatRoomService).getPublicChatRooms();
     }
@@ -124,67 +150,67 @@ class ChatRoomControllerTest {
     @WithMockUser(username = "testUser")
     void getUserRooms_Success() throws Exception {
         List<ChatRoom> rooms = Arrays.asList(chatRoom);
-        when(chatRoomService.getUserChatRooms(USER_NAME)).thenReturn(rooms);
+        when(chatRoomService.getUserChatRooms(USERNAME)).thenReturn(rooms);
 
         mockMvc.perform(get("/api/v1/rooms/my"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].roomId", is(ROOM_ID)));
 
-        verify(chatRoomService).getUserChatRooms(USER_NAME);
+        verify(chatRoomService).getUserChatRooms(USERNAME);
     }
 
     @Test
     @WithMockUser(username = "testUser")
     void addMember_Success() throws Exception {
-        String newMember = "newUser";
-        doNothing().when(chatRoomService).addMemberToChatRoom(ROOM_ID, newMember, USER_NAME);
+        String memberUsername = "newMember";
+        doNothing().when(chatRoomService).addMemberToChatRoom(ROOM_ID, memberUsername, USERNAME);
 
         mockMvc.perform(post("/api/v1/rooms/{roomId}/members", ROOM_ID)
-                .with(csrf())
-                .param("username", newMember))
+                .param("username", memberUsername)
+                .with(csrf()))
                 .andExpect(status().isOk());
 
-        verify(chatRoomService).addMemberToChatRoom(ROOM_ID, newMember, USER_NAME);
+        verify(chatRoomService).addMemberToChatRoom(ROOM_ID, memberUsername, USERNAME);
     }
 
     @Test
     @WithMockUser(username = "testUser")
     void addMember_Unauthorized() throws Exception {
-        String newMember = "newUser";
-        doThrow(new UnauthorizedException("Только участники комнаты могут добавлять новых участников"))
-                .when(chatRoomService).addMemberToChatRoom(ROOM_ID, newMember, USER_NAME);
+        String memberUsername = "newMember";
+        doThrow(new UnauthorizedException("Вы не являетесь владельцем этой комнаты"))
+                .when(chatRoomService).addMemberToChatRoom(ROOM_ID, memberUsername, USERNAME);
 
         mockMvc.perform(post("/api/v1/rooms/{roomId}/members", ROOM_ID)
-                .with(csrf())
-                .param("username", newMember))
+                .param("username", memberUsername)
+                .with(csrf()))
                 .andExpect(status().isForbidden());
 
-        verify(chatRoomService).addMemberToChatRoom(ROOM_ID, newMember, USER_NAME);
+        verify(chatRoomService).addMemberToChatRoom(ROOM_ID, memberUsername, USERNAME);
     }
 
     @Test
     @WithMockUser(username = "testUser")
     void removeMember_Success() throws Exception {
-        String memberToRemove = "userToRemove";
-        doNothing().when(chatRoomService).removeMemberFromChatRoom(ROOM_ID, memberToRemove, USER_NAME);
+        String memberUsername = "member";
+        doNothing().when(chatRoomService).removeMemberFromChatRoom(ROOM_ID, memberUsername, USERNAME);
 
-        mockMvc.perform(delete("/api/v1/rooms/{roomId}/members/{username}", ROOM_ID, memberToRemove)
+        mockMvc.perform(delete("/api/v1/rooms/{roomId}/members/{username}", ROOM_ID, memberUsername)
                 .with(csrf()))
                 .andExpect(status().isOk());
 
-        verify(chatRoomService).removeMemberFromChatRoom(ROOM_ID, memberToRemove, USER_NAME);
+        verify(chatRoomService).removeMemberFromChatRoom(ROOM_ID, memberUsername, USERNAME);
     }
 
     @Test
     @WithMockUser(username = "testUser")
     void leaveRoom_Success() throws Exception {
-        doNothing().when(chatRoomService).removeMemberFromChatRoom(ROOM_ID, USER_NAME, USER_NAME);
+        doNothing().when(chatRoomService).removeMemberFromChatRoom(ROOM_ID, USERNAME, USERNAME);
 
         mockMvc.perform(post("/api/v1/rooms/{roomId}/leave", ROOM_ID)
                 .with(csrf()))
                 .andExpect(status().isOk());
 
-        verify(chatRoomService).removeMemberFromChatRoom(ROOM_ID, USER_NAME, USER_NAME);
+        verify(chatRoomService).removeMemberFromChatRoom(ROOM_ID, USERNAME, USERNAME);
     }
 } 

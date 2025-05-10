@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import iwkms.chatapp.chatservice.dto.ChatMessageDto;
 import iwkms.chatapp.chatservice.exception.UnauthorizedException;
 import iwkms.chatapp.chatservice.model.ChatMessage;
+import iwkms.chatapp.chatservice.repository.ChatMessageRepository;
+import iwkms.chatapp.chatservice.repository.ChatRoomRepository;
 import iwkms.chatapp.chatservice.service.ChatService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,12 @@ class ChatControllerTest {
 
     @MockBean
     private ChatService chatService;
+    
+    @MockBean
+    private ChatMessageRepository chatMessageRepository;
+    
+    @MockBean
+    private ChatRoomRepository chatRoomRepository;
 
     private ObjectMapper objectMapper = new ObjectMapper();
     private ChatMessageDto messageDto;
