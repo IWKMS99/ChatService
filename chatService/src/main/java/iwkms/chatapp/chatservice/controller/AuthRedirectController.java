@@ -8,16 +8,19 @@ import org.springframework.web.servlet.view.RedirectView;
 
 @Controller
 public class AuthRedirectController {
-    @Value("${auth-service.url:http://localhost:8080/auth}")
+    @Value("${auth-service.url:http://localhost:8082}")
     private String authServiceBaseUrl;
 
-    @Value("${chat-service.url:http://localhost:8081/chat}")
+    @Value("${chat-service.redirect-url:http://localhost:8080/chat}")
     private String chatServiceRedirectUrl;
 
     @GetMapping("/login")
     public RedirectView redirectToLogin() {
-        String redirectUrl = UriComponentsBuilder.fromHttpUrl(authServiceBaseUrl)
-                .path("/login")
+        String baseUrl = authServiceBaseUrl.endsWith("/") ? authServiceBaseUrl.substring(0, authServiceBaseUrl.length() -1) : authServiceBaseUrl;
+        String path = "/login";
+
+        String redirectUrl = UriComponentsBuilder.fromHttpUrl(baseUrl)
+                .path(path)
                 .queryParam("redirect", chatServiceRedirectUrl)
                 .toUriString();
         return new RedirectView(redirectUrl);
@@ -25,10 +28,13 @@ public class AuthRedirectController {
 
     @GetMapping("/register")
     public RedirectView redirectToRegister() {
-        String redirectUrl = UriComponentsBuilder.fromHttpUrl(authServiceBaseUrl)
-                .path("/register")
+        String baseUrl = authServiceBaseUrl.endsWith("/") ? authServiceBaseUrl.substring(0, authServiceBaseUrl.length() -1) : authServiceBaseUrl;
+        String path = "/register";
+
+        String redirectUrl = UriComponentsBuilder.fromHttpUrl(baseUrl)
+                .path(path)
                 .queryParam("redirect", chatServiceRedirectUrl)
                 .toUriString();
         return new RedirectView(redirectUrl);
     }
-} 
+}

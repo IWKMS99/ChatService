@@ -20,7 +20,16 @@ public class SecurityConfig extends JwtSecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/chat", "/ws/**", "/css/**", "/js/**", "/login", "/register").permitAll()
+                .requestMatchers("/", "/index.html", "/favicon.ico", 
+                                 "/error",
+                                 "/css/**", "/js/**", "/images/**",
+                                 "/webjars/**",
+                                 "/login", "/register",
+                                 "/chat",
+                                 "/profile",
+                                 "/ws/**"
+                ).permitAll()
+                .requestMatchers("/api/v1/messages/**", "/api/v1/rooms/**").authenticated()
                 .anyRequest().authenticated()
         );
         

@@ -33,10 +33,12 @@ public class SecurityConfig extends JwtSecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll()
+                .requestMatchers("/", "/login", "/register", "/register-process", 
+                                 "/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico").permitAll()
+                .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login").permitAll() 
                 .anyRequest().authenticated()
         );
         
-        return configureSecurityFilterChain(http);
+        return configureSecurityFilterChain(http); 
     }
 }
